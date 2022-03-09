@@ -1,12 +1,12 @@
 .PHONY: help build buildx build_dev buildx_dev run_local push
 
 REGISTRY ?= 231290928314.dkr.ecr.us-east-1.amazonaws.com/
-REPO ?= novus
+REPO ?= firebolt_ingest
 TAG ?= latest
 DOCKERIMG = "$(REGISTRY)$(REPO):$(TAG)"
 
-SOURCE_MOUNT ?= $(shell pwd)/src/novus
-DEST_MOUNT ?= /app/src/novus
+SOURCE_MOUNT ?= $(shell pwd)/src/firebolt_ingest
+DEST_MOUNT ?= /app/src/firebolt_ingest
 
 help:
 	@echo "make build - build production docker image (on host architecture)"

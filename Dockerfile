@@ -13,10 +13,10 @@ FROM base as dev
 
 RUN pip install -e ".[dev]"
 COPY ./tests ./tests
-CMD ["python3", "/app/src/novus/main.py"]
+CMD ["python3", "/app/src/firebolt_ingest/main.py"]
 
 FROM base as prod
 
 RUN pip install .
 
-CMD ["novus"]
+CMD ["firebolt_ingest"]

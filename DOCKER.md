@@ -23,7 +23,7 @@ To use docker with Pycharm:
 1. Preferences > Project: python-template > python interpreter
 2. Click the gear icon > add
 3. Select docker
-4. Select the proper image name, something akin to: `231290928314.dkr.ecr.us-east-1.amazonaws.com/novus:latest`
+4. Select the proper image name, something akin to: `231290928314.dkr.ecr.us-east-1.amazonaws.com/firebolt_ingest:latest`
 
 Now you should be able to run `main.py` from Pycharm and have it execute on your docker container.
 
@@ -47,7 +47,7 @@ We need to leave this directory as is to be able to import and use our package.
 For docker integration, we also want to mount our code as a volume, so that changes
 we make in our host's editor (such as Pycharm) also happen inside our container.
 Due to the `*.egg-info` directory mentioned above, we therefore choose to mount 
-`src/novus` as a volume. This ensures our editable install will function properly.
+`src/firebolt_ingest` as a volume. This ensures our editable install will function properly.
 
 If we tried to mount the `src/` directory, it would overwrite the entire `src/`
 directory on the container, and we would lose our editable install.

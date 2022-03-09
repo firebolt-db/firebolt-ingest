@@ -1,8 +1,8 @@
 # python-template
 
 This is a template project, to make starting new Python projects easier. 
-It implements a single package, called "novus" (latin for new). You should be able to
-find/replace all instances of "novus" with your desired package name.
+It implements a single package, called "firebolt_ingest" (latin for new). You should be able to
+find/replace all instances of "firebolt_ingest" with your desired package name.
 
 This template is somewhat opinionated, so feel free to remove/change things as you see fit.
 
@@ -45,7 +45,7 @@ pytest .
 
 If you are able to run tests, then you should be set for development.
 
-After the install, you should also be able to run `novus` and see the "hello world" message.
+After the install, you should also be able to run `firebolt_ingest` and see the "hello world" message.
 
 
 ### Pycharm
@@ -68,7 +68,7 @@ Set up linting keyboard shortcut (optional):
 Name: lint
 Description: Format the current file
 Program: $PyInterpreterDirectory$/pre-commit
-Arguments: run --files=$FilePath$Working 
+Arguments: run --files=$FilePath$
 Working Directory: $ProjectFileDir$
 ```
 2. Preferences -> Keymap -> External Tools -> lint, 

@@ -1,4 +1,4 @@
-from novus.main import main
+from firebolt_ingest.main import main
 
 
 def test_main():
