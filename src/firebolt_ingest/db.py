@@ -7,7 +7,8 @@ from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 
 resource_manager = ResourceManager()
-
+databases = resource_manager.databases
+engines = resource_manager.engines
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,9 @@ def set_up_connection(database_name: str, engine_name: str) -> Connection:
 def get_or_create_engine(engine_name: str) -> Engine:
     """Get a Firebolt engine by name. If it does not exist, create it."""
     try:
-        engine = resource_manager.engines.get_by_name(name=engine_name)
+        engine = engines.get_by_name(name=engine_name)
     except RuntimeError:
-        engine = resource_manager.engines.create(name=engine_name)
+        engine = engines.create(name=engine_name)
         logger.info(f"Created engine: {engine}")
     return engine
 
@@ -45,8 +46,8 @@ def get_or_create_engine(engine_name: str) -> Engine:
 def get_or_create_database(database_name: str) -> Database:
     """Get a Firebolt database by name. If it does not exist, create it."""
     try:
-        database = resource_manager.databases.get_by_name(name=database_name)
+        database = databases.get_by_name(name=database_name)
     except RuntimeError:
-        database = resource_manager.databases.create(name=database_name)
+        database = databases.create(name=database_name)
         logger.info(f"Created database: {database}")
     return database
