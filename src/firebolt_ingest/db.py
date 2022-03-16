@@ -6,14 +6,12 @@ from firebolt.model.database import Database
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 
-resource_manager = ResourceManager()
-databases = resource_manager.databases
-engines = resource_manager.engines
-
 logger = logging.getLogger(__name__)
 
 
-def set_up_connection(database_name: str, engine_name: str) -> Connection:
+def set_up_connection(
+    rm: ResourceManager, database_name: str, engine_name: str
+) -> Connection:
     """
     Ensure database and engine exist, and that engine is running.
     Args:
@@ -23,8 +21,8 @@ def set_up_connection(database_name: str, engine_name: str) -> Connection:
     Returns:
         Engine connection object (for running queries).
     """
-    database = get_or_create_database(database_name=database_name)
-    engine = get_or_create_engine(engine_name=engine_name)
+    database = get_or_create_database(rm, database_name=database_name)
+    engine = get_or_create_engine(rm, engine_name=engine_name)
     try:
         database.attach_to_engine(engine=engine, is_default_engine=True)
     except AlreadyBoundError:
@@ -33,21 +31,21 @@ def set_up_connection(database_name: str, engine_name: str) -> Connection:
     return engine.get_connection()
 
 
-def get_or_create_engine(engine_name: str) -> Engine:
+def get_or_create_engine(rm: ResourceManager, engine_name: str) -> Engine:
     """Get a Firebolt engine by name. If it does not exist, create it."""
     try:
-        engine = engines.get_by_name(name=engine_name)
+        engine = rm.engines.get_by_name(name=engine_name)
     except RuntimeError:
-        engine = engines.create(name=engine_name)
+        engine = rm.engines.create(name=engine_name)
         logger.info(f"Created engine: {engine}")
     return engine
 
 
-def get_or_create_database(database_name: str) -> Database:
+def get_or_create_database(rm: ResourceManager, database_name: str) -> Database:
     """Get a Firebolt database by name. If it does not exist, create it."""
     try:
-        database = databases.get_by_name(name=database_name)
+        database = rm.databases.get_by_name(name=database_name)
     except RuntimeError:
-        database = databases.create(name=database_name)
+        database = rm.databases.create(name=database_name)
         logger.info(f"Created database: {database}")
     return database
