@@ -1,6 +1,8 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseSettings, SecretStr, root_validator
+
+from firebolt_ingest.model.table import Column
 
 
 class AWSCredentialsKeySecret(BaseSettings):
@@ -61,3 +63,18 @@ def generate_aws_credentials_string(creds: AWSCredentials) -> str:
         )
 
     assert False
+
+
+def generate_columns_string(columns: List[Column]) -> str:
+    """
+    Function generates a prepared string from list of columns to
+    be used in creation of external or internal table
+
+    Args:
+        columns: the list of columns
+
+    Returns:
+        a prepared string
+    """
+
+    return ", ".join([f"{column.name} {column.type}" for column in columns])

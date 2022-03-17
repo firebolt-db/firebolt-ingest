@@ -1,10 +1,12 @@
 import pytest
 
+from firebolt_ingest.model.table import Column
 from firebolt_ingest.utils import (
     AWSCredentials,
     AWSCredentialsKeySecret,
     AWSCredentialsRole,
     generate_aws_credentials_string,
+    generate_columns_string,
 )
 
 
@@ -51,3 +53,19 @@ def test_generate_aws_credentials_string():
     role_creds = AWSCredentialsRole(role_arn="role_arn")
     creds = generate_aws_credentials_string(AWSCredentials(role_creds=role_creds))
     assert creds == "(AWS_ROLE_ARN = 'role_arn')"
+
+
+def test_generate_columns_string():
+    """
+    test generate columns string with 0, 1 and multiple columns
+    """
+    assert generate_columns_string([]) == ""
+
+    assert generate_columns_string([Column(name="id", type="LONG")]) == "id LONG"
+
+    assert (
+        generate_columns_string(
+            [Column(name="id", type="LONG"), Column(name="part", type="INT")]
+        )
+        == "id LONG, part INT"
+    )
