@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 from pydantic import BaseSettings, SecretStr, root_validator
 
@@ -39,25 +39,37 @@ class AWSSettings(BaseSettings):
     aws_credentials: Optional[AWSCredentials]
 
 
-def generate_aws_credentials_string(creds: AWSCredentials) -> str:
+def generate_aws_credentials_string(creds: AWSCredentials) -> Tuple[str, Sequence[str]]:
+    """
+        prepares sql statement for passing the AWS credentials
+
+    Args:
+        creds: valid aws credentials
+
+    Returns:
+        a part of sql with the placeholders for the relevant credentials
+        sequence of credentials
     """
 
-    :param creds:
-    :return:
-    """
     if creds.key_secret_creds is not None:
         ks_creds = creds.key_secret_creds
         return (
-            f"(AWS_KEY_ID = '{ks_creds.aws_key_id}' "
-            f"AWS_SECRET_KEY = '{ks_creds.aws_secret_key.get_secret_value()}')"
+            "(AWS_KEY_ID = ? AWS_SECRET_KEY = ?)",
+            [ks_creds.aws_key_id, ks_creds.aws_secret_key.get_secret_value()],
         )
 
     if creds.role_creds is not None:
         role_creds = creds.role_creds
-        return f"(AWS_ROLE_ARN = '{role_creds.role_arn.get_secret_value()}'" + (
-            f" AWS_ROLE_EXTERNAL_ID = '{role_creds.external_id}')"
-            if role_creds.external_id
-            else ")"
+        stmt = "(AWS_ROLE_ARN = ?{})".format(
+            " AWS_ROLE_EXTERNAL_ID = ?" if role_creds.external_id else ""
+        )
+        params = [role_creds.role_arn.get_secret_value()] + (
+            [role_creds.external_id] if role_creds.external_id else []
         )
 
-    assert False
+        return stmt, params
+
+    raise ValueError(
+        "aws credentials should either have "
+        "key_secret pair or role_creds; none is found"
+    )
