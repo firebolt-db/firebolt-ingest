@@ -8,6 +8,7 @@ from firebolt_ingest.model import YamlModelMixin
 
 class TypesEnum(str, Enum):
     INT = "INT"
+    LONG = "LONG"
     TEXT = "TEXT"
 
 

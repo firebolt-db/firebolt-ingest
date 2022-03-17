@@ -61,18 +61,14 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE IF NOT EXISTS ? "
+            f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name} "
             f"({columns}) "
             f"{cred_stmt} "
             f"URL = ? "
             f"OBJECT_PATTERN = ? "
-            f"TYPE = (?)"
+            f"TYPE = ({table.type.name})"
         )
-        params = [
-            [table.table_name]
-            + cred_params
-            + [self.aws_settings.s3_url, table.object_pattern, table.type.name]
-        ]
+        params = cred_params + [self.aws_settings.s3_url, table.object_pattern]
 
         # Execute parametrized query
         self.connection.cursor().execute(query, params)

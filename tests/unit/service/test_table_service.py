@@ -36,11 +36,11 @@ def test_create_external_table_happy_path(
     ts.create_external_table(mock_table)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE IF NOT EXISTS ? "
+        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name "
         "(id INT, name TEXT) "
         "CREDENTIALS = (AWS_ROLE_ARN = ?) "
         "URL = ? "
         "OBJECT_PATTERN = ? "
-        "TYPE = (?)",
-        [["table_name", "role_arn", "s3://bucket-name/", "*.parquet", "PARQUET"]],
+        "TYPE = (PARQUET)",
+        ["role_arn", "s3://bucket-name/", "*.parquet"],
     )
