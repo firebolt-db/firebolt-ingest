@@ -8,8 +8,8 @@ def table_dict() -> dict:
         "database_name": "test_db",
         "table_name": "test_table",
         "columns": [
-            {"name": "test_col_1", "type": "int"},
-            {"name": "test_col_2", "type": "string"},
+            {"name": "test_col_1", "type": "INT"},
+            {"name": "test_col_2", "type": "TEXT"},
         ],
     }
 
