@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Tuple
+from typing import List, Optional, Tuple
 
 from pydantic import BaseSettings, SecretStr, root_validator
 
@@ -39,7 +39,7 @@ class AWSSettings(BaseSettings):
     aws_credentials: Optional[AWSCredentials]
 
 
-def generate_aws_credentials_string(creds: AWSCredentials) -> Tuple[str, Sequence[str]]:
+def generate_aws_credentials_string(creds: AWSCredentials) -> Tuple[str, List[str]]:
     """
         prepares sql statement for passing the AWS credentials
 
