@@ -5,12 +5,13 @@ import yaml
 @pytest.fixture
 def table_dict() -> dict:
     return {
-        "database_name": "test_db",
         "table_name": "test_table",
         "columns": [
             {"name": "test_col_1", "type": "INT"},
             {"name": "test_col_2", "type": "TEXT"},
         ],
+        "file_type": "PARQUET",
+        "object_pattern": "*.parquet",
     }
 
 
