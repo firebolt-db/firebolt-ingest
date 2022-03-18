@@ -19,3 +19,21 @@ def test_column():
         Column(name="name", type="ARRAY(INT))")
         Column(name="name", type="NOTLONG")
         Column(name="name", type="INT NULL")
+
+
+def test_generate_columns_string(mock_table):
+    """
+    test generate columns string with 0, 1 and multiple columns
+    """
+
+    mock_table.columns = []
+    assert mock_table.generate_columns_string() == ""
+
+    mock_table.columns = [Column(name="id", type="TEXT")]
+    assert mock_table.generate_columns_string() == "id TEXT"
+
+    mock_table.columns = [
+        Column(name="id", type="TEXT"),
+        Column(name="part", type="INT"),
+    ]
+    assert mock_table.generate_columns_string() == "id TEXT, part INT"

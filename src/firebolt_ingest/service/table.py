@@ -1,27 +1,10 @@
-from typing import List
-
 from firebolt.async_db.connection import Connection
 
 from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import Column, Table
-
-
-def generate_columns_string(columns: List[Column]) -> str:
-    """
-    Function generates a prepared string from list of columns to
-    be used in creation of external or internal table
-
-    Args:
-        columns: the list of columns
-
-    Returns:
-        a prepared string
-    """
-
-    return ", ".join([f"{column.name} {column.type}" for column in columns])
+from firebolt_ingest.model.table import Table
 
 
 class TableService:
@@ -57,7 +40,7 @@ class TableService:
             cred_stmt, cred_params = "", []
 
         # Prepare columns
-        columns = generate_columns_string(table.columns)
+        columns = table.generate_columns_string()
 
         # Generate query
         query = (

@@ -1,24 +1,8 @@
 from unittest.mock import MagicMock
 
 from firebolt_ingest.aws_settings import AWSSettings
-from firebolt_ingest.model.table import Column, Table
-from firebolt_ingest.service.table import TableService, generate_columns_string
-
-
-def test_generate_columns_string():
-    """
-    test generate columns string with 0, 1 and multiple columns
-    """
-    assert generate_columns_string([]) == ""
-
-    assert generate_columns_string([Column(name="id", type="TEXT")]) == "id TEXT"
-
-    assert (
-        generate_columns_string(
-            [Column(name="id", type="TEXT"), Column(name="part", type="INT")]
-        )
-        == "id TEXT, part INT"
-    )
+from firebolt_ingest.model.table import Table
+from firebolt_ingest.service.table import TableService
 
 
 def test_create_external_table_happy_path(

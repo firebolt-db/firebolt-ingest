@@ -60,3 +60,17 @@ class Table(BaseModel, YamlModelMixin):
             raise ValueError("Table should have at least one column")
 
         return values
+
+    def generate_columns_string(self) -> str:
+        """
+        Function generates a prepared string from list of columns to
+        be used in creation of external or internal table
+
+        Args:
+            columns: the list of columns
+
+        Returns:
+            a prepared string
+        """
+
+        return ", ".join([f"{column.name} {column.type}" for column in self.columns])
