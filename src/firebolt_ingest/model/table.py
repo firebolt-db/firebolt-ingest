@@ -5,11 +5,29 @@ from pydantic import BaseModel, Field, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
+atomic_type = {
+    "INT",
+    "INTEGER",
+    "BIGINT",
+    "LONG",
+    "FLOAT",
+    "DOUBLE",
+    "TEXT",
+    "VARCHAR",
+    "STRING",
+    "DATE",
+}
 
-class TypesEnum(str, Enum):
-    INT = "INT"
-    LONG = "LONG"
-    TEXT = "TEXT"
+
+def match_array(s: str) -> bool:
+    """
+    Check whether a string is a valid array and return true
+    """
+    if s.startswith("ARRAY(") and s.endswith(")"):
+        return match_array(s[6:-1])
+    if s in atomic_type:
+        return True
+    return False
 
 
 class ObjectTypes(str, Enum):
@@ -20,12 +38,18 @@ class ObjectTypes(str, Enum):
 
 class Column(BaseModel):
     name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
-    type: TypesEnum
+    type: str = Field(min_length=1, max_length=255)
+
+    @root_validator
+    def type_validator(cls, values: dict) -> dict:
+        if values["type"] in atomic_type or match_array(values["type"]):
+            return values
+
+        raise ValueError("unknown column type")
 
 
 class Table(BaseModel, YamlModelMixin):
-    database_name: str
-    table_name: str
+    table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     columns: List[Column]
     type: ObjectTypes
     object_pattern: str = Field(min_length=1, max_length=255)
