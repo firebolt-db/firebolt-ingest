@@ -1,3 +1,6 @@
+from typing import Optional
+
+import sqlparse  # type: ignore
 from firebolt.async_db.connection import Connection
 
 from firebolt_ingest.aws_settings import (
@@ -62,4 +65,51 @@ class TableService:
         Returns:
 
         """
-        raise NotImplementedError("Not yet implemented")
+
+        # TODO: partition support, primary index support
+        query = (
+            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name} "
+            f"({table.generate_columns_string()}) "
+        )
+
+        self.connection.cursor().execute(query)
+
+    def insert_full_overwrite(
+        self,
+        internal_table: Table,
+        external_table_name: str,
+        where_sql: Optional[str] = None,
+    ) -> None:
+        """
+        Perform a full overwrite from an external table into an internal table.
+        All existing data in the internal table will be deleted, and data from the
+        external table will be loaded.
+
+        This function is appropriate for unpartitioned tables, or for
+        partitioned tables you wish to fully overwrite.
+
+        Args:
+            internal_table: (destination) The internal table which will be overwritten.
+            external_table_name: (source) The external table from which to load.
+            where_sql: (Optional) A where clause, for filtering data.
+                Do not include the "WHERE" keyword.
+                If no clause is provided (default), the entire external table is loaded.
+        """
+        cursor = self.connection.cursor()
+
+        drop_query = f"DROP TABLE IF EXISTS {internal_table.table_name} CASCADE"
+
+        cursor.execute(query=drop_query)
+
+        self.create_internal_table(table=internal_table)
+
+        insert_query = (
+            f"INSERT INTO {internal_table.table_name} "
+            f"SELECT {internal_table.generate_columns_string()} "
+            f"FROM {external_table_name} "
+        )
+        if where_sql is not None:
+            insert_query += f"WHERE {where_sql}"
+
+        formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
+        cursor.execute(query=formatted_query)
