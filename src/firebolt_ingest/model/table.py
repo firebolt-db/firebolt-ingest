@@ -30,7 +30,7 @@ def match_array(s: str) -> bool:
     return False
 
 
-class ObjectTypes(str, Enum):
+class FileType(str, Enum):
     ORC = "ORC"
     PARQUET = "PARQUET"
     TSV = "TSV"
@@ -51,7 +51,7 @@ class Column(BaseModel):
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     columns: List[Column]
-    type: ObjectTypes
+    file_type: FileType
     object_pattern: str = Field(min_length=1, max_length=255)
 
     @root_validator

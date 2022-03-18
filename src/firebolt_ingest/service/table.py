@@ -26,9 +26,6 @@ class TableService:
 
         Args:
             table: table definition
-
-        Returns: Nothing in case of success
-
         """
         # Prepare aws credentials
         if self.aws_settings.aws_credentials:
@@ -49,7 +46,7 @@ class TableService:
             f"{cred_stmt} "
             f"URL = ? "
             f"OBJECT_PATTERN = ? "
-            f"TYPE = ({table.type.name})"
+            f"TYPE = ({table.file_type.name})"
         )
         params = cred_params + [self.aws_settings.s3_url, table.object_pattern]
 

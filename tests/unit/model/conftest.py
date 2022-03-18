@@ -10,7 +10,7 @@ def table_dict() -> dict:
             {"name": "test_col_1", "type": "INT"},
             {"name": "test_col_2", "type": "TEXT"},
         ],
-        "type": "PARQUET",
+        "file_type": "PARQUET",
         "object_pattern": "*.parquet",
     }
 

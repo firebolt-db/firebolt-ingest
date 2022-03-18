@@ -23,7 +23,7 @@ def mock_table():
     return Table(
         database_name="db_name",
         table_name="table_name",
-        type="PARQUET",
+        file_type="PARQUET",
         object_pattern="*.parquet",
         columns=[Column(name="id", type="INT"), Column(name="name", type="TEXT")],
     )
