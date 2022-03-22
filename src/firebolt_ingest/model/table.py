@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
@@ -74,17 +74,13 @@ class Partition(BaseModel):
     see: https://docs.firebolt.io/sql-reference/functions-reference/date-and-time-functions.html#extract  # noqa: E501
     """
 
-    column: Column
+    column_name: str
     datetime_part: Optional[DatetimePart]
-
-    @validator("column")
-    def column_must_be_date(cls, column: Column):
-        assert column.type in date_time_types
 
     def as_sql_string(self) -> str:
         if self.datetime_part is not None:
-            return f"EXTRACT({self.datetime_part} FROM {self.column.name})"
-        return self.column.name
+            return f"EXTRACT({self.datetime_part} FROM {self.column_name})"
+        return self.column_name
 
 
 class Table(BaseModel, YamlModelMixin):
@@ -99,6 +95,23 @@ class Table(BaseModel, YamlModelMixin):
         if len(values["columns"]) == 0:
             raise ValueError("Table should have at least one column")
 
+        return values
+
+    @property
+    def column_types(self):
+        return {c.name: c.type for c in self.columns}
+
+    @root_validator
+    def partition_columns_datetime_type(cls, values: dict) -> dict:
+        column_name_to_type = {c.name: c.type for c in values["columns"]}
+        for partition in values["partitions"]:
+            if partition.datetime_part is not None:
+                partition_column_type = column_name_to_type[partition.column_name]
+                if partition_column_type not in date_time_types:
+                    raise ValueError(
+                        f"Partition column {partition.column_name} must be a "
+                        f"compatible datetime type, not a {partition_column_type}"
+                    )
         return values
 
     def generate_columns_string(self) -> str:

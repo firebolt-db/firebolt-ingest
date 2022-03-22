@@ -9,8 +9,12 @@ def table_dict() -> dict:
         "columns": [
             {"name": "test_col_1", "type": "INT"},
             {"name": "test_col_2", "type": "TEXT"},
+            {"name": "test_col_3", "type": "DATE"},
         ],
-        "partitions": [],
+        "partitions": [
+            {"column_name": "test_col_2", "datetime_part": None},
+            {"column_name": "test_col_3", "datetime_part": "DAY"},
+        ],
         "file_type": "PARQUET",
         "object_pattern": "*.parquet",
     }
