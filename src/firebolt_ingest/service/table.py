@@ -101,6 +101,17 @@ class TableService:
 
         cursor.execute(query=drop_query)
 
+        # verify that the drop succeeded
+        find_query = (
+            f"SELECT * FROM information_schema.tables "
+            f"WHERE table_name = '{internal_table.table_name}'"
+        )
+        matching_table_count = cursor.execute(find_query)
+        if matching_table_count != 0:
+            raise RuntimeError(
+                f"Table {internal_table.table_name} did not drop successfully."
+            )
+
         self.create_internal_table(table=internal_table)
 
         insert_query = (

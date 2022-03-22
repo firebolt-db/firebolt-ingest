@@ -35,6 +35,7 @@ def test_create_external_table_happy_path(
 def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table):
     connection = MagicMock()
     cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
     connection.cursor.return_value = cursor_mock
 
     ts = TableService(connection, mock_aws_settings)
