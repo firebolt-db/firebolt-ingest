@@ -1,6 +1,12 @@
 import pytest
 
-from firebolt_ingest.model.table import Column, Table
+from firebolt_ingest.model.table import (
+    Column,
+    DatetimePart,
+    FileType,
+    Partition,
+    Table,
+)
 
 
 def test_table_from_yaml(table_yaml_string, table_dict):
@@ -19,6 +25,20 @@ def test_column():
         Column(name="name", type="ARRAY(INT))")
         Column(name="name", type="NOTLONG")
         Column(name="name", type="INT NULL")
+
+
+def test_partition():
+    """
+    Ensure we raise an error when a user tries to extract from a non-datetime column
+    """
+    with pytest.raises(ValueError):
+        Table(
+            table_name="test_table_1",
+            columns=[Column(name="col_1", type="INT")],
+            partitions=[Partition(column_name="col_1", datetime_part=DatetimePart.DAY)],
+            file_type=FileType.PARQUET,
+            object_pattern="*.parquet",
+        )
 
 
 def test_generate_columns_string(mock_table):
