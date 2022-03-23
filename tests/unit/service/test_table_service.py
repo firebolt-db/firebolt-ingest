@@ -32,6 +32,27 @@ def test_create_external_table_happy_path(
     )
 
 
+def test_create_internal_table_happy_path(
+    mock_aws_settings: AWSSettings, mock_table_partitioned: Table
+):
+    """
+    call create internal table and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(connection, mock_aws_settings)
+    ts.create_internal_table(mock_table_partitioned)
+
+    cursor_mock.execute.assert_called_once_with(
+        "CREATE FACT TABLE IF NOT EXISTS table_name "
+        "(id INT, user STRING, birthdate DATE)\n"
+        "PARTITION BY user,EXTRACT(DAY FROM birthdate)\n"
+    )
+
+
 def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table):
     connection = MagicMock()
     cursor_mock = MagicMock()
