@@ -27,15 +27,29 @@ def test_column():
         Column(name="name", type="INT NULL")
 
 
-def test_partition():
+def test_partition_extract_type():
     """
-    Ensure we raise an error when a user tries to extract from a non-datetime column
+    Ensure we raise an error when a user tries to extract from a non-datetime column.
     """
     with pytest.raises(ValueError):
         Table(
             table_name="test_table_1",
             columns=[Column(name="col_1", type="INT")],
             partitions=[Partition(column_name="col_1", datetime_part=DatetimePart.DAY)],
+            file_type=FileType.PARQUET,
+            object_pattern="*.parquet",
+        )
+
+
+def test_partition_valid_column():
+    """
+    Ensure we raise an error when a user specifies a partition not in the column list.
+    """
+    with pytest.raises(ValueError):
+        Table(
+            table_name="test_table_1",
+            columns=[Column(name="col_1", type="INT")],
+            partitions=[Partition(column_name="bad_col")],
             file_type=FileType.PARQUET,
             object_pattern="*.parquet",
         )

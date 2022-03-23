@@ -119,8 +119,6 @@ class Table(BaseModel, YamlModelMixin):
         """
         column_name_to_type = {c.name: c.type for c in values["columns"]}
         for partition in values.get("partitions", []):
-            if partition.datetime_part is None:
-                continue
 
             if partition.column_name not in column_name_to_type.keys():
                 raise ValueError(
@@ -128,13 +126,13 @@ class Table(BaseModel, YamlModelMixin):
                     f"in the list of table columns"
                 )
 
-            partition_column_type = column_name_to_type.get(partition.column_name)
-
-            if partition_column_type not in date_time_types:
-                raise ValueError(
-                    f"Partition column {partition.column_name} must be a "
-                    f"compatible datetime type, not a {partition_column_type}"
-                )
+            if partition.datetime_part is not None:
+                partition_column_type = column_name_to_type.get(partition.column_name)
+                if partition_column_type not in date_time_types:
+                    raise ValueError(
+                        f"Partition column {partition.column_name} must be a "
+                        f"compatible datetime type, not a {partition_column_type}"
+                    )
         return values
 
     def generate_columns_string(self) -> str:
