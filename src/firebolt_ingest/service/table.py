@@ -58,19 +58,22 @@ class TableService:
 
     def create_internal_table(self, table: Table) -> None:
         """
+        Constructs a query for creating an internal table and executes it
 
         Args:
-            table:
-
-        Returns:
-
+            table: table definition
         """
 
-        # TODO: partition support, primary index support
         query = (
             f"CREATE FACT TABLE IF NOT EXISTS {table.table_name} "
-            f"({table.generate_columns_string()}) "
+            f"({table.generate_columns_string()})\n"
         )
+
+        if table.primary_index:
+            query += f"PRIMARY INDEX ({table.generate_primary_index_string()})\n"
+
+        if table.partitions:
+            query += f"PARTITION BY {table.generate_partitions_string()}\n"
 
         self.connection.cursor().execute(query)
 

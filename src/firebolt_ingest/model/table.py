@@ -86,6 +86,7 @@ class Partition(BaseModel):
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     columns: List[Column]
+    primary_index: List[str] = []
     partitions: List[Partition] = []
     file_type: FileType
     object_pattern: str = Field(min_length=1, max_length=255)
@@ -98,13 +99,26 @@ class Table(BaseModel, YamlModelMixin):
         return values
 
     @root_validator
+    def primary_index_columns(cls, values: dict) -> dict:
+        """
+        Ensure the primary index column names exist in the list of columns.
+        """
+        for index_column in values.get("primary_index", []):
+            if index_column not in {c.name for c in values["columns"]}:
+                raise ValueError(
+                    f"Could not find primary index {index_column} "
+                    f"in the list of table columns."
+                )
+        return values
+
+    @root_validator
     def partition_columns(cls, values: dict) -> dict:
         """
         Ensure the partition column_name exists in the list of columns.
         Ensure partition columns that use EXTRACT refer to date/time columns.
         """
         column_name_to_type = {c.name: c.type for c in values["columns"]}
-        for partition in values["partitions"]:
+        for partition in values.get("partitions", []):
             if partition.datetime_part is None:
                 continue
 
@@ -130,9 +144,16 @@ class Table(BaseModel, YamlModelMixin):
         """
         return ", ".join([f"{column.name} {column.type}" for column in self.columns])
 
+    def generate_primary_index_string(self) -> str:
+        """
+        Generate a prepared sql string from list of primary index columns to
+        be used in the creation of internal tables with a primary index.
+        """
+        return ", ".join([index for index in self.primary_index])
+
     def generate_partitions_string(self) -> str:
         """
-        Generate a prepared sql string from list of columns to
+        Generate a prepared sql string from list of partition columns to
         be used in the creation of internal partitioned tables.
         """
         return ",".join([p.as_sql_string() for p in self.partitions])
