@@ -54,6 +54,10 @@ def test_create_internal_table_happy_path(
 
 
 def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table):
+    """
+    Call insert full overwrite and check
+    that the correct drop & insert into queries are passed to the cursor
+    """
     connection = MagicMock()
     cursor_mock = MagicMock()
     cursor_mock.execute.return_value = 0

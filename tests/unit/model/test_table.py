@@ -10,11 +10,18 @@ from firebolt_ingest.model.table import (
 
 
 def test_table_from_yaml(table_yaml_string, table_dict):
+    """
+    Test that we can parse a yaml file into a Table object
+    """
     table = Table.parse_yaml(table_yaml_string)
     assert table.dict() == table_dict
 
 
 def test_column():
+    """
+    Test that we can create valid columns
+    Test that validations fail if a user provides a bad type for a column
+    """
     Column(name="name", type="INT")
     Column(name="name", type="ARRAY(INT)")
     Column(name="name", type="ARRAY(ARRAY(INT))")
@@ -57,7 +64,7 @@ def test_partition_valid_column():
 
 def test_generate_columns_string(mock_table):
     """
-    test generate columns string with 0, 1 and multiple columns
+    Test generate columns string with 0, 1 and multiple columns
     """
 
     mock_table.columns = []
