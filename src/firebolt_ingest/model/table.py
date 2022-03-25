@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, root_validator
 from firebolt_ingest.model import YamlModelMixin
 
 # see: https://docs.firebolt.io/general-reference/data-types.html
-atomic_type = {
+ATOMIC_TYPES = {
     "INT",
     "INTEGER",
     "BIGINT",
@@ -23,7 +23,7 @@ atomic_type = {
     "BOOLEAN",
 }
 
-date_time_types = {"DATE", "TIMESTAMP", "DATETIME"}
+DATE_TIME_TYPES = {"DATE", "TIMESTAMP", "DATETIME"}
 
 
 def match_array(s: str) -> bool:
@@ -32,7 +32,7 @@ def match_array(s: str) -> bool:
     """
     if s.startswith("ARRAY(") and s.endswith(")"):
         return match_array(s[6:-1])
-    if s in atomic_type:
+    if s in ATOMIC_TYPES:
         return True
     return False
 
@@ -63,13 +63,13 @@ class Column(BaseModel):
 
     @root_validator
     def type_validator(cls, values: dict) -> dict:
-        if values["type"] in atomic_type or match_array(values["type"]):
+        if values["type"] in ATOMIC_TYPES or match_array(values["type"]):
             return values
 
         raise ValueError("unknown column type")
 
 
-file_metadata_columns: List[Column] = [
+FILE_METADATA_COLUMNS: List[Column] = [
     Column(name="source_file_name", type="STRING"),
     Column(name="source_file_timestamp", type="DATETIME"),
 ]
@@ -114,8 +114,9 @@ class Table(BaseModel, YamlModelMixin):
         """
         Ensure the primary index column names exist in the list of columns.
         """
+        column_names = {c.name for c in values["columns"]}
         for index_column in values.get("primary_index", []):
-            if index_column not in {c.name for c in values["columns"]}:
+            if index_column not in column_names:
                 raise ValueError(
                     f"Could not find primary index {index_column} "
                     f"in the list of table columns."
@@ -139,7 +140,7 @@ class Table(BaseModel, YamlModelMixin):
 
             if partition.datetime_part is not None:
                 partition_column_type = column_name_to_type.get(partition.column_name)
-                if partition_column_type not in date_time_types:
+                if partition_column_type not in DATE_TIME_TYPES:
                     raise ValueError(
                         f"Partition column {partition.column_name} must be a "
                         f"compatible datetime type, not a {partition_column_type}"
@@ -155,10 +156,10 @@ class Table(BaseModel, YamlModelMixin):
             add_file_metadata: If true, add the source_file_name and
             source_file_timestamp to the list of columns.
         """
-        columns = self.columns
-        if add_file_metadata:
-            columns += file_metadata_columns
-        return ", ".join([f"{c.name} {c.type}" for c in columns])
+        additional_columns = FILE_METADATA_COLUMNS if add_file_metadata else []
+        return ", ".join(
+            [f"{c.name} {c.type}" for c in self.columns + additional_columns]
+        )
 
     def generate_primary_index_string(self) -> str:
         """
@@ -176,7 +177,11 @@ class Table(BaseModel, YamlModelMixin):
             add_file_metadata: If true, add the source_file_name and
             source_file_timestamp columns as partition columns.
         """
-        partitions = self.partitions
-        if add_file_metadata:
-            partitions += [Partition(column_name=c.name) for c in file_metadata_columns]
-        return ",".join([p.as_sql_string() for p in partitions])
+        additional_partitions = (
+            [Partition(column_name=c.name) for c in FILE_METADATA_COLUMNS]
+            if add_file_metadata
+            else []
+        )
+        return ",".join(
+            [p.as_sql_string() for p in self.partitions + additional_partitions]
+        )

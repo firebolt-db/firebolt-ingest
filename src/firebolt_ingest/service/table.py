@@ -7,7 +7,7 @@ from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import Table, file_metadata_columns
+from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 
 
 class TableService:
@@ -130,12 +130,8 @@ class TableService:
 
         # if the internal table on firebolt has the file metadata columns,
         # we need to be sure to include them as part of our insert.
-        add_file_metadata = (
-            True
-            if set(c.name for c in file_metadata_columns).issubset(
-                set(self.get_table_columns(internal_table.table_name))
-            )
-            else False
+        add_file_metadata = set(c.name for c in FILE_METADATA_COLUMNS).issubset(
+            set(self.get_table_columns(internal_table.table_name))
         )
 
         insert_query = (
