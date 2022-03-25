@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
+# see: https://docs.firebolt.io/general-reference/data-types.html
 atomic_type = {
     "INT",
     "INTEGER",
@@ -12,10 +13,14 @@ atomic_type = {
     "LONG",
     "FLOAT",
     "DOUBLE",
+    "DOUBLE PRECISION",
     "TEXT",
     "VARCHAR",
     "STRING",
     "DATE",
+    "DATETIME",
+    "TIMESTAMP",
+    "BOOLEAN",
 }
 
 date_time_types = {"DATE", "TIMESTAMP", "DATETIME"}
@@ -62,6 +67,12 @@ class Column(BaseModel):
             return values
 
         raise ValueError("unknown column type")
+
+
+file_metadata_columns: List[Column] = [
+    Column(name="source_file_name", type="STRING"),
+    Column(name="source_file_timestamp", type="DATETIME"),
+]
 
 
 class Partition(BaseModel):
@@ -135,12 +146,19 @@ class Table(BaseModel, YamlModelMixin):
                     )
         return values
 
-    def generate_columns_string(self) -> str:
+    def generate_columns_string(self, add_file_metadata: bool) -> str:
         """
         Generate a prepared sql string from list of columns to
         be used in the creation of external or internal tables.
+
+        Args:
+            add_file_metadata: If true, add the source_file_name and
+            source_file_timestamp to the list of columns.
         """
-        return ", ".join([f"{column.name} {column.type}" for column in self.columns])
+        columns = self.columns
+        if add_file_metadata:
+            columns += file_metadata_columns
+        return ", ".join([f"{c.name} {c.type}" for c in columns])
 
     def generate_primary_index_string(self) -> str:
         """
@@ -149,9 +167,16 @@ class Table(BaseModel, YamlModelMixin):
         """
         return ", ".join([index for index in self.primary_index])
 
-    def generate_partitions_string(self) -> str:
+    def generate_partitions_string(self, add_file_metadata: bool) -> str:
         """
         Generate a prepared sql string from list of partition columns to
         be used in the creation of internal partitioned tables.
+
+        Args:
+            add_file_metadata: If true, add the source_file_name and
+            source_file_timestamp columns as partition columns.
         """
-        return ",".join([p.as_sql_string() for p in self.partitions])
+        partitions = self.partitions
+        if add_file_metadata:
+            partitions += [Partition(column_name=c.name) for c in file_metadata_columns]
+        return ",".join([p.as_sql_string() for p in partitions])

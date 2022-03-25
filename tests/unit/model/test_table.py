@@ -68,13 +68,21 @@ def test_generate_columns_string(mock_table):
     """
 
     mock_table.columns = []
-    assert mock_table.generate_columns_string() == ""
+    assert mock_table.generate_columns_string(add_file_metadata=False) == ""
 
     mock_table.columns = [Column(name="id", type="TEXT")]
-    assert mock_table.generate_columns_string() == "id TEXT"
+    assert mock_table.generate_columns_string(add_file_metadata=False) == "id TEXT"
 
     mock_table.columns = [
         Column(name="id", type="TEXT"),
         Column(name="part", type="INT"),
     ]
-    assert mock_table.generate_columns_string() == "id TEXT, part INT"
+    assert (
+        mock_table.generate_columns_string(add_file_metadata=False)
+        == "id TEXT, part INT"
+    )
+
+    assert (
+        mock_table.generate_columns_string(add_file_metadata=True)
+        == "id TEXT, part INT, source_file_name STRING, source_file_timestamp DATETIME"
+    )

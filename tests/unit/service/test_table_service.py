@@ -47,9 +47,9 @@ def test_create_internal_table_happy_path(
     ts.create_internal_table(mock_table_partitioned)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE FACT TABLE IF NOT EXISTS table_name "
-        "(id INT, user STRING, birthdate DATE)\n"
-        "PARTITION BY user,EXTRACT(DAY FROM birthdate)\n"
+        "CREATE FACT TABLE IF NOT EXISTS table_name\n"
+        "(id INT, user STRING, birthdate DATE, source_file_name STRING, source_file_timestamp DATETIME)\n"  # noqa: E501
+        "PARTITION BY user,EXTRACT(DAY FROM birthdate),source_file_name,source_file_timestamp\n"  # noqa: E501
     )
 
 
