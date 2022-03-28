@@ -88,7 +88,7 @@ class Table(BaseModel, YamlModelMixin):
     columns: List[Column]
     partitions: List[Partition] = []
     file_type: FileType
-    object_pattern: str = Field(min_length=1, max_length=255)
+    object_pattern: List[str]
 
     @root_validator
     def non_empty_column_list(cls, values: dict) -> dict:

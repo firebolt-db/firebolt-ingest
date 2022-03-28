@@ -24,6 +24,6 @@ def mock_table():
         database_name="db_name",
         table_name="table_name",
         file_type="PARQUET",
-        object_pattern="*.parquet",
+        object_pattern=["*0.parquet", "*1.parquet"],
         columns=[Column(name="id", type="INT"), Column(name="name", type="TEXT")],
     )
