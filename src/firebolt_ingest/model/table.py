@@ -91,8 +91,15 @@ class Table(BaseModel, YamlModelMixin):
     object_pattern: List[str]
 
     @root_validator
+    def non_empty_object_pattern(cls, values: dict) -> dict:
+        if not values.get("object_pattern"):
+            raise ValueError("At least one object pattern has to be specified")
+
+        return values
+
+    @root_validator
     def non_empty_column_list(cls, values: dict) -> dict:
-        if len(values["columns"]) == 0:
+        if not values.get("columns"):
             raise ValueError("Table should have at least one column")
 
         return values

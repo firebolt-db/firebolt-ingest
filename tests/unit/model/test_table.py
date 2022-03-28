@@ -57,3 +57,15 @@ def test_generate_columns_string(mock_table):
         Column(name="part", type="INT"),
     ]
     assert mock_table.generate_columns_string() == "id TEXT, part INT"
+
+
+def test_empty_object_pattern(table_dict):
+    """
+    Try to feed a dict with empty object pattern list
+    """
+
+    table_dict["object_pattern"] = []
+    with pytest.raises(ValueError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "object pattern" in str(e)
