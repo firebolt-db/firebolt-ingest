@@ -22,12 +22,39 @@ def test_create_external_table_happy_path(
     ts.create_external_table(mock_table)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name "
-        "(id INT, name TEXT) "
-        "CREDENTIALS = (AWS_ROLE_ARN = ?) "
-        "URL = ? "
-        "OBJECT_PATTERN = ? "
-        "TYPE = (PARQUET)",
+        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name\n"
+        "(id INT, name TEXT)\n"
+        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
+        "URL = ?\n"
+        "OBJECT_PATTERN = ?\n"
+        "TYPE = (PARQUET)\n",
+        ["role_arn", "s3://bucket-name/", "*.parquet"],
+    )
+
+
+def test_create_external_table_with_compression(
+    mock_aws_settings: AWSSettings, mock_table: Table
+):
+    """
+    call create external table and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(connection, mock_aws_settings)
+    mock_table.compression = "GZIP"
+    ts.create_external_table(mock_table)
+
+    cursor_mock.execute.assert_called_once_with(
+        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name\n"
+        "(id INT, name TEXT)\n"
+        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
+        "URL = ?\n"
+        "OBJECT_PATTERN = ?\n"
+        "TYPE = (PARQUET)\n"
+        "COMPRESSION = GZIP\n",
         ["role_arn", "s3://bucket-name/", "*.parquet"],
     )
 
