@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Field, root_validator
 
@@ -55,6 +55,7 @@ class DatetimePart(str, Enum):
 class Column(BaseModel):
     name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     type: str = Field(min_length=1, max_length=255)
+    extract_partition: Optional[str] = Field(min_length=1, max_length=255)
 
     @root_validator
     def type_validator(cls, values: dict) -> dict:
@@ -123,12 +124,34 @@ class Table(BaseModel, YamlModelMixin):
                 )
         return values
 
-    def generate_columns_string(self) -> str:
+    def generate_internal_columns_string(self) -> Tuple[str, List]:
         """
         Generate a prepared sql string from list of columns to
-        be used in the creation of external or internal tables.
+        be used in the creation of internal tables.
         """
-        return ", ".join([f"{column.name} {column.type}" for column in self.columns])
+        return (
+            ", ".join([f"{column.name} {column.type}" for column in self.columns]),
+            [],
+        )
+
+    def generate_external_columns_string(self) -> Tuple[str, List]:
+        """
+        Generate a prepared sql string from list of columns to
+        be used in the creation of external table.
+        """
+
+        column_strings = []
+        for column in self.columns:
+            column_strings.append(
+                f"{column.name} {column.type}"
+                f"{' PARTITION(?)' if column.extract_partition else ''}"
+            )
+
+        return ", ".join(column_strings), [
+            column.extract_partition
+            for column in self.columns
+            if column.extract_partition
+        ]
 
     def generate_partitions_string(self) -> str:
         """

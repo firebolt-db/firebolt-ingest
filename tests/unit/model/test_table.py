@@ -9,9 +9,19 @@ from firebolt_ingest.model.table import (
 )
 
 
+def prune_nested_dict(d):
+    """Prune items from dictionaries where value is None"""
+    if isinstance(d, dict):
+        return {k: prune_nested_dict(v) for k, v in d.items() if v is not None}
+    elif isinstance(d, list):
+        return [prune_nested_dict(i) for i in d if i is not None]
+    else:
+        return d
+
+
 def test_table_from_yaml(table_yaml_string, table_dict):
     table = Table.parse_yaml(table_yaml_string)
-    assert table.dict() == table_dict
+    assert prune_nested_dict(table.dict()) == table_dict
 
 
 def test_column():
@@ -47,13 +57,22 @@ def test_generate_columns_string(mock_table):
     """
 
     mock_table.columns = []
-    assert mock_table.generate_columns_string() == ""
+    assert mock_table.generate_external_columns_string() == ("", [])
 
     mock_table.columns = [Column(name="id", type="TEXT")]
-    assert mock_table.generate_columns_string() == "id TEXT"
+    assert mock_table.generate_external_columns_string() == ("id TEXT", [])
 
     mock_table.columns = [
         Column(name="id", type="TEXT"),
         Column(name="part", type="INT"),
     ]
-    assert mock_table.generate_columns_string() == "id TEXT, part INT"
+    assert mock_table.generate_external_columns_string() == ("id TEXT, part INT", [])
+
+    mock_table.columns = [
+        Column(name="id", type="TEXT", extract_partition=".*"),
+        Column(name="part", type="INT"),
+    ]
+    assert mock_table.generate_external_columns_string() == (
+        "id TEXT PARTITION(?), part INT",
+        [".*"],
+    )

@@ -52,7 +52,7 @@ def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table
 
     expected_query = sqlparse.format(
         f"INSERT INTO table_name "
-        f"SELECT id INT, name TEXT "
+        f"SELECT id, name "
         f"FROM external_table_name "
         f"WHERE 1=1",
         reindent=True,

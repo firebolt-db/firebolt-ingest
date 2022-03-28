@@ -40,18 +40,22 @@ class TableService:
             cred_stmt, cred_params = "", []
 
         # Prepare columns
-        columns = table.generate_columns_string()
+        columns_stmt, columns_params = table.generate_external_columns_string()
 
         # Generate query
         query = (
             f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name} "
-            f"({columns}) "
+            f"({columns_stmt}) "
             f"{cred_stmt} "
             f"URL = ? "
             f"OBJECT_PATTERN = ? "
             f"TYPE = ({table.file_type.name})"
         )
-        params = cred_params + [self.aws_settings.s3_url, table.object_pattern]
+        params = (
+            cred_params
+            + columns_params
+            + [self.aws_settings.s3_url, table.object_pattern]
+        )
 
         # Execute parametrized query
         self.connection.cursor().execute(query, params)
@@ -67,12 +71,12 @@ class TableService:
         """
 
         # TODO: partition support, primary index support
+        columns_stmt, columns_params = table.generate_internal_columns_string()
         query = (
-            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name} "
-            f"({table.generate_columns_string()}) "
+            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name} " f"({columns_stmt}) "
         )
 
-        self.connection.cursor().execute(query)
+        self.connection.cursor().execute(query, columns_params)
 
     def insert_full_overwrite(
         self,
@@ -116,7 +120,7 @@ class TableService:
 
         insert_query = (
             f"INSERT INTO {internal_table.table_name} "
-            f"SELECT {internal_table.generate_columns_string()} "
+            f"SELECT {', '.join([column.name for column in internal_table.columns])} "
             f"FROM {external_table_name} "
         )
         if where_sql is not None:
