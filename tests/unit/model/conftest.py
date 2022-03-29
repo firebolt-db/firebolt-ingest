@@ -18,6 +18,7 @@ def table_dict() -> dict:
         ],
         "file_type": "PARQUET",
         "object_pattern": ["*0.parquet", "*1.parquet"],
+        "compression": "GZIP",
     }
 
 

@@ -43,13 +43,16 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name} "
-            f"({columns}) "
-            f"{cred_stmt} "
-            f"URL = ? "
-            f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))} "
-            f"TYPE = ({table.file_type.name})"
+            f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name}\n"
+            f"({columns})\n"
+            f"{cred_stmt}\n"
+            f"URL = ?\n"
+            f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))}\n"
+            f"TYPE = ({table.file_type.name})\n"
         )
+        if table.compression:
+            query += f"COMPRESSION = {table.compression}\n"
+
         params = cred_params + [aws_settings.s3_url] + table.object_pattern
 
         # Execute parametrized query

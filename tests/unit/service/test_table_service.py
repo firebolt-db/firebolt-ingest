@@ -19,21 +19,23 @@ def test_create_external_table_happy_path(
     connection.cursor.return_value = cursor_mock
 
     ts = TableService(connection)
+    mock_table.compression = "GZIP"
     ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name "
-        "(id INT, name TEXT) "
-        "CREDENTIALS = (AWS_ROLE_ARN = ?) "
-        "URL = ? "
-        "OBJECT_PATTERN = ?, ? "
-        "TYPE = (PARQUET)",
+        "CREATE EXTERNAL TABLE IF NOT EXISTS table_name\n"
+        "(id INT, name TEXT)\n"
+        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
+        "URL = ?\n"
+        "OBJECT_PATTERN = ?, ?\n"
+        "TYPE = (PARQUET)\n"
+        "COMPRESSION = GZIP\n",
         ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
     )
 
 
 def test_create_internal_table_happy_path(
-    mock_aws_settings: AWSSettings, mock_table_partitioned: Table
+    mock_aws_settings: AWSSettings, mock_table: Table, mock_table_partitioned: Table
 ):
     """
     call create internal table and check,
@@ -44,12 +46,14 @@ def test_create_internal_table_happy_path(
     connection.cursor.return_value = cursor_mock
 
     ts = TableService(connection)
-    ts.create_internal_table(mock_table_partitioned)
+    ts.create_internal_table(mock_table_partitioned, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
         "CREATE FACT TABLE IF NOT EXISTS table_name\n"
-        "(id INT, user STRING, birthdate DATE, source_file_name STRING, source_file_timestamp DATETIME)\n"  # noqa: E501
-        "PARTITION BY user,EXTRACT(DAY FROM birthdate),source_file_name,source_file_timestamp\n"  # noqa: E501
+        "(id INT, user STRING, birthdate DATE, "
+        "source_file_name STRING, source_file_timestamp DATETIME)\n"
+        "PARTITION BY user,EXTRACT(DAY FROM birthdate),"
+        "source_file_name,source_file_timestamp\n"
     )
 
 

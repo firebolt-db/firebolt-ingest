@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, root_validator
 
@@ -101,6 +101,7 @@ class Table(BaseModel, YamlModelMixin):
     partitions: List[Partition] = []
     file_type: FileType
     object_pattern: List[str]
+    compression: Optional[Literal["GZIP"]]
 
     @root_validator
     def non_empty_object_pattern(cls, values: dict) -> dict:
