@@ -15,12 +15,14 @@ def table_dict() -> dict:
             {"name": "test_col_2", "type": "TEXT"},
             {"name": "test_col_3", "type": "DATE"},
         ],
+        "primary_index": ["test_col_1"],
         "partitions": [
             {"column_name": "test_col_2"},
             {"column_name": "test_col_3", "datetime_part": "DAY"},
         ],
         "file_type": "PARQUET",
-        "object_pattern": "*.parquet",
+        "object_pattern": ["*0.parquet", "*1.parquet"],
+        "compression": "GZIP",
     }
 
 
