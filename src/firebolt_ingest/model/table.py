@@ -102,7 +102,7 @@ class Table(BaseModel, YamlModelMixin):
     partitions: List[Partition] = []
     file_type: FileType
     object_pattern: List[str]
-    compression: Optional[Literal["GZIP"]]
+    compression: Optional[Literal["GZIP"]] = None
 
     @root_validator
     def non_empty_object_pattern(cls, values: dict) -> dict:
