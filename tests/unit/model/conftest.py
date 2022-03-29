@@ -11,6 +11,7 @@ def table_dict() -> dict:
             {"name": "test_col_2", "type": "TEXT"},
             {"name": "test_col_3", "type": "DATE"},
         ],
+        "primary_index": ["test_col_1"],
         "partitions": [
             {"column_name": "test_col_2", "datetime_part": None},
             {"column_name": "test_col_3", "datetime_part": "DAY"},

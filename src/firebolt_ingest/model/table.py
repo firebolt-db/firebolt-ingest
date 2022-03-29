@@ -5,20 +5,25 @@ from pydantic import BaseModel, Field, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
-atomic_type = {
+# see: https://docs.firebolt.io/general-reference/data-types.html
+ATOMIC_TYPES = {
     "INT",
     "INTEGER",
     "BIGINT",
     "LONG",
     "FLOAT",
     "DOUBLE",
+    "DOUBLE PRECISION",
     "TEXT",
     "VARCHAR",
     "STRING",
     "DATE",
+    "DATETIME",
+    "TIMESTAMP",
+    "BOOLEAN",
 }
 
-date_time_types = {"DATE", "TIMESTAMP", "DATETIME"}
+DATE_TIME_TYPES = {"DATE", "TIMESTAMP", "DATETIME"}
 
 
 def match_array(s: str) -> bool:
@@ -27,7 +32,7 @@ def match_array(s: str) -> bool:
     """
     if s.startswith("ARRAY(") and s.endswith(")"):
         return match_array(s[6:-1])
-    if s in atomic_type:
+    if s in ATOMIC_TYPES:
         return True
     return False
 
@@ -58,10 +63,16 @@ class Column(BaseModel):
 
     @root_validator
     def type_validator(cls, values: dict) -> dict:
-        if values["type"] in atomic_type or match_array(values["type"]):
+        if values["type"] in ATOMIC_TYPES or match_array(values["type"]):
             return values
 
         raise ValueError("unknown column type")
+
+
+FILE_METADATA_COLUMNS: List[Column] = [
+    Column(name="source_file_name", type="STRING"),
+    Column(name="source_file_timestamp", type="DATETIME"),
+]
 
 
 class Partition(BaseModel):
@@ -86,6 +97,7 @@ class Partition(BaseModel):
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     columns: List[Column]
+    primary_index: List[str] = []
     partitions: List[Partition] = []
     file_type: FileType
     object_pattern: str = Field(min_length=1, max_length=255)
@@ -98,15 +110,27 @@ class Table(BaseModel, YamlModelMixin):
         return values
 
     @root_validator
+    def primary_index_columns(cls, values: dict) -> dict:
+        """
+        Ensure the primary index column names exist in the list of columns.
+        """
+        column_names = {c.name for c in values["columns"]}
+        for index_column in values.get("primary_index", []):
+            if index_column not in column_names:
+                raise ValueError(
+                    f"Could not find primary index {index_column} "
+                    f"in the list of table columns."
+                )
+        return values
+
+    @root_validator
     def partition_columns(cls, values: dict) -> dict:
         """
         Ensure the partition column_name exists in the list of columns.
         Ensure partition columns that use EXTRACT refer to date/time columns.
         """
         column_name_to_type = {c.name: c.type for c in values["columns"]}
-        for partition in values["partitions"]:
-            if partition.datetime_part is None:
-                continue
+        for partition in values.get("partitions", []):
 
             if partition.column_name not in column_name_to_type.keys():
                 raise ValueError(
@@ -114,25 +138,50 @@ class Table(BaseModel, YamlModelMixin):
                     f"in the list of table columns"
                 )
 
-            partition_column_type = column_name_to_type.get(partition.column_name)
-
-            if partition_column_type not in date_time_types:
-                raise ValueError(
-                    f"Partition column {partition.column_name} must be a "
-                    f"compatible datetime type, not a {partition_column_type}"
-                )
+            if partition.datetime_part is not None:
+                partition_column_type = column_name_to_type.get(partition.column_name)
+                if partition_column_type not in DATE_TIME_TYPES:
+                    raise ValueError(
+                        f"Partition column {partition.column_name} must be a "
+                        f"compatible datetime type, not a {partition_column_type}"
+                    )
         return values
 
-    def generate_columns_string(self) -> str:
+    def generate_columns_string(self, add_file_metadata: bool) -> str:
         """
         Generate a prepared sql string from list of columns to
         be used in the creation of external or internal tables.
-        """
-        return ", ".join([f"{column.name} {column.type}" for column in self.columns])
 
-    def generate_partitions_string(self) -> str:
+        Args:
+            add_file_metadata: If true, add the source_file_name and
+            source_file_timestamp to the list of columns.
         """
-        Generate a prepared sql string from list of columns to
+        additional_columns = FILE_METADATA_COLUMNS if add_file_metadata else []
+        return ", ".join(
+            [f"{c.name} {c.type}" for c in self.columns + additional_columns]
+        )
+
+    def generate_primary_index_string(self) -> str:
+        """
+        Generate a prepared sql string from list of primary index columns to
+        be used in the creation of internal tables with a primary index.
+        """
+        return ", ".join([index for index in self.primary_index])
+
+    def generate_partitions_string(self, add_file_metadata: bool) -> str:
+        """
+        Generate a prepared sql string from list of partition columns to
         be used in the creation of internal partitioned tables.
+
+        Args:
+            add_file_metadata: If true, add the source_file_name and
+            source_file_timestamp columns as partition columns.
         """
-        return ",".join([p.as_sql_string() for p in self.partitions])
+        additional_partitions = (
+            [Partition(column_name=c.name) for c in FILE_METADATA_COLUMNS]
+            if add_file_metadata
+            else []
+        )
+        return ",".join(
+            [p.as_sql_string() for p in self.partitions + additional_partitions]
+        )

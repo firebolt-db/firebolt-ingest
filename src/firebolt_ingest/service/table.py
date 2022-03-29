@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import sqlparse  # type: ignore
 from firebolt.async_db.connection import Connection
@@ -7,7 +7,7 @@ from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import Table
+from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 
 
 class TableService:
@@ -39,7 +39,7 @@ class TableService:
             cred_stmt, cred_params = "", []
 
         # Prepare columns
-        columns = table.generate_columns_string()
+        columns = table.generate_columns_string(add_file_metadata=False)
 
         # Generate query
         query = (
@@ -55,23 +55,37 @@ class TableService:
         # Execute parametrized query
         self.connection.cursor().execute(query, params)
 
-    def create_internal_table(self, table: Table) -> None:
+    def create_internal_table(self, table: Table, add_file_metadata=True) -> None:
         """
+        Constructs a query for creating an internal table and executes it
 
         Args:
-            table:
-
-        Returns:
-
+            table: table definition
         """
 
-        # TODO: partition support, primary index support
         query = (
-            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name} "
-            f"({table.generate_columns_string()}) "
+            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name}\n"
+            f"({table.generate_columns_string(add_file_metadata=add_file_metadata)})\n"
         )
 
+        if table.primary_index:
+            query += f"PRIMARY INDEX ({table.generate_primary_index_string()})\n"
+
+        if table.partitions:
+            query += f"PARTITION BY {table.generate_partitions_string(add_file_metadata=add_file_metadata)}\n"  # noqa: E501
+
         self.connection.cursor().execute(query)
+
+    def get_table_columns(self, table_name: str) -> List[str]:
+        """
+        Get the column names of an existing table on Firebolt.
+
+        Args:
+            table_name: Name of the table
+        """
+        cursor = self.connection.cursor()
+        cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+        return [column.name for column in cursor.description]
 
     def insert_full_overwrite(
         self,
@@ -113,9 +127,15 @@ class TableService:
 
         self.create_internal_table(table=internal_table)
 
+        # if the internal table on firebolt has the file metadata columns,
+        # we need to be sure to include them as part of our insert.
+        add_file_metadata = set(c.name for c in FILE_METADATA_COLUMNS).issubset(
+            set(self.get_table_columns(internal_table.table_name))
+        )
+
         insert_query = (
             f"INSERT INTO {internal_table.table_name} "
-            f"SELECT {internal_table.generate_columns_string()} "
+            f"SELECT {internal_table.generate_columns_string(add_file_metadata=add_file_metadata)} "  # noqa: E501
             f"FROM {external_table_name} "
         )
         if where_sql is not None:
