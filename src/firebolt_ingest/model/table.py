@@ -160,12 +160,17 @@ class Table(BaseModel, YamlModelMixin):
         self, add_file_metadata: bool
     ) -> Tuple[str, List]:
         """
+
         Generate a prepared sql string from list of columns to
         be used in the creation of internal tables.
 
         Args:
             add_file_metadata: If true, add the source_file_name and
             source_file_timestamp to the list of columns.
+
+        Returns:
+            a tuple with partial sql prepared statement and
+            list of prepared statement arguments
         """
         additional_partitions = FILE_METADATA_COLUMNS if add_file_metadata else []
         return (
@@ -182,6 +187,10 @@ class Table(BaseModel, YamlModelMixin):
         """
         Generate a prepared sql string from list of columns to
         be used in the creation of external table.
+
+        Returns:
+            a tuple with partial sql prepared statement and
+            list of prepared statement arguments
         """
 
         column_strings = []
