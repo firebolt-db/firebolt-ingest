@@ -54,10 +54,15 @@ def api_endpoint() -> str:
 def connection(
     engine_name, database_name, username, password, account_name, api_endpoint
 ):
-    return connect(
+    connection = connect(
         engine_name=engine_name,
+        account_name=account_name,
         database=database_name,
         username=username,
         password=password,
         api_endpoint=api_endpoint,
     )
+
+    yield connection
+
+    connection.close()
