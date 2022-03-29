@@ -53,7 +53,8 @@ def test_create_internal_table_happy_path(
         "(id INT, user STRING, birthdate DATE, "
         "source_file_name STRING, source_file_timestamp DATETIME)\n"
         "PARTITION BY user,EXTRACT(DAY FROM birthdate),"
-        "source_file_name,source_file_timestamp\n"
+        "source_file_name,source_file_timestamp\n",
+        [],
     )
 
 
@@ -81,7 +82,7 @@ def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table
 
     expected_query = sqlparse.format(
         f"INSERT INTO table_name "
-        f"SELECT id INT, name TEXT "
+        f"SELECT id, name "
         f"FROM external_table_name "
         f"WHERE 1=1",
         reindent=True,
