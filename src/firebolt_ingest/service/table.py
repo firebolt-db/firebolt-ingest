@@ -13,27 +13,26 @@ from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 class TableService:
     """ """
 
-    def __init__(self, connection: Connection, aws_settings: AWSSettings):
+    def __init__(self, connection: Connection):
         """
 
         Args:
             connection:
-            aws_settings:
         """
         self.connection = connection
-        self.aws_settings = aws_settings
 
-    def create_external_table(self, table: Table) -> None:
+    def create_external_table(self, table: Table, aws_settings: AWSSettings) -> None:
         """
         Constructs a query for creating an external table and executes it
 
         Args:
             table: table definition
+            aws_settings: aws settings
         """
         # Prepare aws credentials
-        if self.aws_settings.aws_credentials:
+        if aws_settings.aws_credentials:
             cred_stmt, cred_params = generate_aws_credentials_string(
-                self.aws_settings.aws_credentials
+                aws_settings.aws_credentials
             )
             cred_stmt = f"CREDENTIALS = {cred_stmt}"
         else:
@@ -51,7 +50,7 @@ class TableService:
             f"OBJECT_PATTERN = ? "
             f"TYPE = ({table.file_type.name})"
         )
-        params = cred_params + [self.aws_settings.s3_url, table.object_pattern]
+        params = cred_params + [aws_settings.s3_url, table.object_pattern]
 
         # Execute parametrized query
         self.connection.cursor().execute(query, params)

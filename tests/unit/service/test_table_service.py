@@ -18,8 +18,8 @@ def test_create_external_table_happy_path(
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(connection, mock_aws_settings)
-    ts.create_external_table(mock_table)
+    ts = TableService(connection)
+    ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
         "CREATE EXTERNAL TABLE IF NOT EXISTS table_name "
@@ -43,7 +43,7 @@ def test_create_internal_table_happy_path(
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(connection, mock_aws_settings)
+    ts = TableService(connection)
     ts.create_internal_table(mock_table_partitioned)
 
     cursor_mock.execute.assert_called_once_with(
@@ -63,7 +63,7 @@ def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table
     cursor_mock.execute.return_value = 0
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(connection, mock_aws_settings)
+    ts = TableService(connection)
     ts.create_internal_table = MagicMock()
     ts.insert_full_overwrite(
         internal_table=mock_table,
