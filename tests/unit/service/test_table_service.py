@@ -49,7 +49,7 @@ def test_create_internal_table_happy_path(
     ts.create_internal_table(mock_table_partitioned, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE FACT TABLE IF NOT EXISTS table_name\n"
+        "CREATE FACT TABLE table_name\n"
         "(id INT, user STRING, birthdate DATE, "
         "source_file_name STRING, source_file_timestamp DATETIME)\n"
         "PARTITION BY user,EXTRACT(DAY FROM birthdate),"

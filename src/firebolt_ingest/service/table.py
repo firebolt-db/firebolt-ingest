@@ -72,13 +72,10 @@ class TableService:
         columns_stmt, columns_params = table.generate_internal_columns_string(
             add_file_metadata
         )
-        query = (
-            f"CREATE FACT TABLE IF NOT EXISTS {table.table_name}\n"
-            f"({columns_stmt})\n"
-        )
+        query = f"CREATE FACT TABLE {table.table_name}\n" f"({columns_stmt})\n"
 
         if table.primary_index:
-            query += f"PRIMARY INDEX ({table.generate_primary_index_string()})\n"
+            query += f"PRIMARY INDEX {table.generate_primary_index_string()}\n"
 
         if table.partitions:
             query += f"PARTITION BY {table.generate_partitions_string(add_file_metadata=add_file_metadata)}\n"  # noqa: E501
