@@ -17,7 +17,7 @@ def table_dict() -> dict:
             {"column_name": "test_col_3", "datetime_part": "DAY"},
         ],
         "file_type": "PARQUET",
-        "object_pattern": "*.parquet",
+        "object_pattern": ["*0.parquet", "*1.parquet"],
     }
 
 

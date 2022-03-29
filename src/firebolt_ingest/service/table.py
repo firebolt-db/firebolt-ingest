@@ -47,10 +47,10 @@ class TableService:
             f"({columns}) "
             f"{cred_stmt} "
             f"URL = ? "
-            f"OBJECT_PATTERN = ? "
+            f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))} "
             f"TYPE = ({table.file_type.name})"
         )
-        params = cred_params + [aws_settings.s3_url, table.object_pattern]
+        params = cred_params + [aws_settings.s3_url] + table.object_pattern
 
         # Execute parametrized query
         self.connection.cursor().execute(query, params)

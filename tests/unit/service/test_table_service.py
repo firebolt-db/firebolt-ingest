@@ -26,9 +26,9 @@ def test_create_external_table_happy_path(
         "(id INT, name TEXT) "
         "CREDENTIALS = (AWS_ROLE_ARN = ?) "
         "URL = ? "
-        "OBJECT_PATTERN = ? "
+        "OBJECT_PATTERN = ?, ? "
         "TYPE = (PARQUET)",
-        ["role_arn", "s3://bucket-name/", "*.parquet"],
+        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
     )
 
 

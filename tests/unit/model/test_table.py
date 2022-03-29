@@ -77,6 +77,7 @@ def test_generate_columns_string(mock_table):
         Column(name="id", type="TEXT"),
         Column(name="part", type="INT"),
     ]
+
     assert (
         mock_table.generate_columns_string(add_file_metadata=False)
         == "id TEXT, part INT"
@@ -86,3 +87,15 @@ def test_generate_columns_string(mock_table):
         mock_table.generate_columns_string(add_file_metadata=True)
         == "id TEXT, part INT, source_file_name STRING, source_file_timestamp DATETIME"
     )
+
+
+def test_empty_object_pattern(table_dict):
+    """
+    Ensure an empty object pattern raises a validation error
+    """
+
+    table_dict["object_pattern"] = []
+    with pytest.raises(ValueError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "object pattern" in str(e)
