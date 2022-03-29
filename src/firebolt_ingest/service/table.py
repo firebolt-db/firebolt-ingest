@@ -39,12 +39,12 @@ class TableService:
             cred_stmt, cred_params = "", []
 
         # Prepare columns
-        columns = table.generate_columns_string(add_file_metadata=False)
+        columns_stmt, columns_params = table.generate_external_columns_string()
 
         # Generate query
         query = (
             f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name}\n"
-            f"({columns})\n"
+            f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"
             f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))}\n"
@@ -53,7 +53,9 @@ class TableService:
         if table.compression:
             query += f"COMPRESSION = {table.compression}\n"
 
-        params = cred_params + [aws_settings.s3_url] + table.object_pattern
+        params = (
+            cred_params + columns_params + [aws_settings.s3_url] + table.object_pattern
+        )
 
         # Execute parametrized query
         self.connection.cursor().execute(query, params)
@@ -66,9 +68,13 @@ class TableService:
             table: table definition
         """
 
+        # TODO: partition support, primary index support
+        columns_stmt, columns_params = table.generate_internal_columns_string(
+            add_file_metadata
+        )
         query = (
             f"CREATE FACT TABLE IF NOT EXISTS {table.table_name}\n"
-            f"({table.generate_columns_string(add_file_metadata=add_file_metadata)})\n"
+            f"({columns_stmt})\n"
         )
 
         if table.primary_index:
@@ -77,7 +83,7 @@ class TableService:
         if table.partitions:
             query += f"PARTITION BY {table.generate_partitions_string(add_file_metadata=add_file_metadata)}\n"  # noqa: E501
 
-        self.connection.cursor().execute(query)
+        self.connection.cursor().execute(query, columns_params)
 
     def get_table_columns(self, table_name: str) -> List[str]:
         """
@@ -136,10 +142,15 @@ class TableService:
             set(self.get_table_columns(internal_table.table_name))
         )
 
+        column_names = [
+            column.name
+            for column in internal_table.columns
+            + (FILE_METADATA_COLUMNS if add_file_metadata else [])
+        ]
         insert_query = (
-            f"INSERT INTO {internal_table.table_name} "
-            f"SELECT {internal_table.generate_columns_string(add_file_metadata=add_file_metadata)} "  # noqa: E501
-            f"FROM {external_table_name} "
+            f"INSERT INTO {internal_table.table_name}\n"
+            f"SELECT {', '.join(column_names)}\n"
+            f"FROM {external_table_name}\n"
         )
         if where_sql is not None:
             insert_query += f"WHERE {where_sql}"
