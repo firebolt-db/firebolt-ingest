@@ -91,7 +91,7 @@ def test_generate_columns_string(mock_table):
 
 def test_empty_object_pattern(table_dict):
     """
-    Try to feed a dict with empty object pattern list
+    Ensure an empty object pattern raises a validation error
     """
 
     table_dict["object_pattern"] = []
