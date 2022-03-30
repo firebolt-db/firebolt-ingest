@@ -4,6 +4,8 @@ from os import environ
 from firebolt.db.connection import connect
 from pytest import fixture
 
+from firebolt_ingest.model.table import Column, Table
+
 LOGGER = getLogger(__name__)
 
 ENGINE_NAME_ENV = "ENGINE_NAME"
@@ -66,3 +68,17 @@ def connection(
     yield connection
 
     connection.close()
+
+
+@fixture
+def mock_table() -> Table:
+    return Table(
+        table_name="integration_test_tmp_table",
+        columns=[
+            Column(name="l_orderkey", type="LONG"),
+            Column(name="l_partkey", type="LONG"),
+        ],
+        file_type="PARQUET",
+        object_pattern=["*.parquet"],
+        primary_index=["l_orderkey"],
+    )

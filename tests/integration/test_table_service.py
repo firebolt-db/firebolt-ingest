@@ -24,6 +24,54 @@ def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
     ), "Expected columns and columns from table don't match"
 
 
+def test_create_internal_table(connection, mock_table: Table):
+    """create fact table and verify the correctness of the columns"""
+
+    TableService(connection).create_internal_table(
+        table=mock_table, add_file_metadata=False
+    )
+
+    cursor = connection.cursor()
+    check_columns(cursor, mock_table.table_name, mock_table.columns)
+
+    cursor.execute(f"DROP TABLE {mock_table.table_name}")
+
+
+def test_create_internal_table_with_meta(connection, mock_table: Table):
+    """create fact table with meta columns and verify it"""
+
+    TableService(connection).create_internal_table(
+        table=mock_table, add_file_metadata=True
+    )
+
+    cursor = connection.cursor()
+    check_columns(
+        cursor,
+        mock_table.table_name,
+        mock_table.columns
+        + [
+            Column(name="source_file_name", type="TEXT"),
+            Column(name="source_file_timestamp", type="TIMESTAMP"),
+        ],
+    )
+
+    cursor.execute(f"DROP TABLE {mock_table.table_name}")
+
+
+def test_create_internal_table_twice(connection, mock_table: Table):
+    """create fact table twice and ensure,
+    that the second time it fails with an exception"""
+
+    ts = TableService(connection)
+
+    ts.create_internal_table(table=mock_table)
+
+    with pytest.raises(FireboltError):
+        ts.create_internal_table(table=mock_table)
+
+    connection.cursor().execute(f"DROP TABLE {mock_table.table_name}")
+
+
 def test_create_external_table(connection):
     """create external table from the getting started example"""
 
