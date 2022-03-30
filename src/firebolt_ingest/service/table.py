@@ -23,7 +23,7 @@ class TableService:
 
     def create_external_table(self, table: Table, aws_settings: AWSSettings) -> None:
         """
-        Constructs a query for creating an external table and executes it
+        Constructs a query for creating an external table and executes it.
 
         Args:
             table: table definition
@@ -43,7 +43,7 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE IF NOT EXISTS {table.table_name}\n"
+            f"CREATE EXTERNAL TABLE {table.table_name}\n"
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"
