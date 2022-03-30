@@ -72,9 +72,9 @@ def test_partition_valid_column():
         )
 
 
-def test_generate_columns_string(mock_table):
+def test_generate_external_columns_string(mock_table):
     """
-    Test generate columns string with 0, 1 and multiple columns
+    Test generate external columns string with 0, 1 and multiple columns
     """
 
     mock_table.columns = []
@@ -98,6 +98,16 @@ def test_generate_columns_string(mock_table):
         [".*"],
     )
 
+
+def test_generate_internal_columns_string(mock_table):
+    """
+    Test generate internal columns simple, with metadata,
+    and with additional nullable, unique options
+    """
+    mock_table.columns = [
+        Column(name="id", type="TEXT", extract_partition=".*"),
+        Column(name="part", type="INT"),
+    ]
     assert mock_table.generate_internal_columns_string(add_file_metadata=False) == (
         "id TEXT, part INT",
         [],
@@ -105,6 +115,17 @@ def test_generate_columns_string(mock_table):
 
     assert mock_table.generate_internal_columns_string(add_file_metadata=True) == (
         "id TEXT, part INT, source_file_name STRING, source_file_timestamp DATETIME",
+        [],
+    )
+
+    mock_table.columns = [
+        Column(name="id", type="TEXT", nullable=True),
+        Column(name="part", type="INT", unique=True),
+        Column(name="part1", type="INT", unique=False, nullable=False),
+    ]
+
+    assert mock_table.generate_internal_columns_string(add_file_metadata=False) == (
+        "id TEXT NULL, part INT UNIQUE, part1 INT NOT NULL",
         [],
     )
 
