@@ -9,6 +9,8 @@ from firebolt_ingest.aws_settings import (
 )
 from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 
+EXTERNAL_TABLE_PREFIX = "ex_"
+
 
 class TableService:
     """ """
@@ -43,7 +45,7 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE {table.table_name}\n"
+            f"CREATE EXTERNAL TABLE {EXTERNAL_TABLE_PREFIX}{table.table_name}\n"
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"
@@ -97,6 +99,7 @@ class TableService:
         internal_table: Table,
         external_table_name: str,
         where_sql: Optional[str] = None,
+        firebolt_dont_wait_for_upload_to_s3: bool = False,
     ) -> None:
         """
         Perform a full overwrite from an external table into an internal table.
@@ -112,6 +115,8 @@ class TableService:
             where_sql: (Optional) A where clause, for filtering data.
                 Do not include the "WHERE" keyword.
                 If no clause is provided (default), the entire external table is loaded.
+            firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
+                wait until the changes will be written to s3.
         """
         cursor = self.connection.cursor()
 
@@ -152,5 +157,8 @@ class TableService:
             insert_query += f"WHERE {where_sql}"
 
         formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
-        cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
+
+        if firebolt_dont_wait_for_upload_to_s3:
+            cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
+
         cursor.execute(query=formatted_query)
