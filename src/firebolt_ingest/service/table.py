@@ -9,6 +9,8 @@ from firebolt_ingest.aws_settings import (
 )
 from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 
+EXTERNAL_TABLE_PREFIX = "ex_"
+
 
 class TableService:
     """ """
@@ -43,7 +45,7 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE {table.table_name}\n"
+            f"CREATE EXTERNAL TABLE {EXTERNAL_TABLE_PREFIX}{table.table_name}\n"
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"

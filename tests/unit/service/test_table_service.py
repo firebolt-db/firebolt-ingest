@@ -23,7 +23,7 @@ def test_create_external_table_happy_path(
     ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE table_name\n"
+        "CREATE EXTERNAL TABLE ex_table_name\n"
         "(id INT, name TEXT)\n"
         "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
         "URL = ?\n"
