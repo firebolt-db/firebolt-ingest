@@ -68,7 +68,6 @@ class TableService:
             table: table definition
         """
 
-        # TODO: partition support, primary index support
         columns_stmt, columns_params = table.generate_internal_columns_string(
             add_file_metadata
         )
@@ -153,4 +152,5 @@ class TableService:
             insert_query += f"WHERE {where_sql}"
 
         formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
+        cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
         cursor.execute(query=formatted_query)

@@ -126,3 +126,51 @@ def test_create_external_table_twice(connection):
         ts.create_external_table(table, aws_settings)
 
     connection.cursor().execute(f"DROP TABLE {table_name}")
+
+
+# Test plan ingestion:
+# happy path
+# full overwrite twice
+# internal table doesn't exist
+# external table doesn't exist
+
+
+def validate_ingestion(
+    cursor: Cursor, internal_table_name: str, external_table_name: str
+):
+    """
+    validate, that the number of datapoints
+    in the external and internal tables the same
+    """
+    cursor.execute(
+        f"SELECT "
+        f"(SELECT count(*) FROM {internal_table_name}) =="
+        f"(SELECT count(*) FROM {external_table_name})"
+    )
+    data = cursor.fetchall()
+
+    assert (
+        data[0][0] == 1
+    ), "Number of datapoint in the external and internal tables is not equal"
+
+
+def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
+    """
+    Happy path
+    """
+    ts = TableService(connection)
+
+    mock_table.table_name = "ex_lineitem"
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    mock_table.table_name = "lineitem"
+    ts.create_internal_table(mock_table)
+
+    ts.insert_full_overwrite(
+        internal_table=mock_table, external_table_name=f"ex_{mock_table.table_name}"
+    )
+
+    cursor = connection.cursor()
+    validate_ingestion(cursor, "ex_lineitem", "lineitem")
+    cursor.execute(f"DROP TABLE lineitem")
+    cursor.execute(f"DROP TABLE ex_lineitem")
