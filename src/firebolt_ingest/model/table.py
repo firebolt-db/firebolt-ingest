@@ -37,12 +37,6 @@ def match_array(s: str) -> bool:
     return False
 
 
-class FileType(str, Enum):
-    ORC = "ORC"
-    PARQUET = "PARQUET"
-    TSV = "TSV"
-
-
 class DatetimePart(str, Enum):
     DAY = "DAY"
     DOW = "DOW"
@@ -100,7 +94,7 @@ class Table(BaseModel, YamlModelMixin):
     columns: List[Column]
     primary_index: List[str] = []
     partitions: List[Partition] = []
-    file_type: FileType
+    file_type: Literal["ORC", "PARQUET", "TSV"]
     object_pattern: List[str]
     compression: Optional[Literal["GZIP"]] = None
 
