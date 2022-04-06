@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import sqlparse  # type: ignore
 from firebolt.async_db.connection import Connection
@@ -93,6 +93,50 @@ class TableService:
         cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
         return [column.name for column in cursor.description]
 
+    def get_table_partition_columns(self, table_name: str) -> Any:
+        """
+        Get the names of partition columns of an existing table on Firebolt.
+
+        Args:
+            table_name: Name of the table.
+        """
+        cursor = self.connection.cursor()
+        sql = f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE
+            table_schema = '{self.connection.database}' AND
+            table_name = '{table_name}' AND
+            is_in_partition_expr = 'YES'
+        """
+        cursor.execute(sql)
+        return cursor.fetchall()
+
+    def get_partition_keys(
+        self, table_name: str, where_sql: Optional[str] = None
+    ) -> Any:
+        """
+        Get the partition keys of an existing table on Firebolt.
+        Args:
+            table_name: Name of the table.
+             where_sql: (Optional) A where clause, for filtering data.
+                Do not include the "WHERE" keyword.
+                If no clause is provided (default), all partition keys are returned.
+        """
+        # FUTURE: replace this query with `show partitions` when
+        # https://packboard.atlassian.net/browse/FIR-2370 is completed
+        part_expr = ",".join(self.get_table_partition_columns(table_name=table_name))
+        sql = f"""
+        SELECT DISTINCT {part_expr}
+        FROM {table_name}
+        """
+        if where_sql is not None:
+            sql += f"WHERE {where_sql}"
+
+        cursor = self.connection.cursor()
+        cursor.execute(sql)
+        return cursor.fetchall()
+
     def insert_full_overwrite(
         self,
         internal_table: Table,
@@ -154,3 +198,42 @@ class TableService:
 
         formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
         cursor.execute(query=formatted_query)
+
+    def insert_incremental_overwrite(
+        self,
+        internal_table: Table,
+        external_table_name: str,
+        where_sql: Optional[str] = None,
+    ) -> None:
+        """
+        Perform an incremental overwrite from an external table into an internal table.
+
+        The internal table must be partitioned by:
+         - source_file_name
+         - source_file_timestamp
+
+        Args:
+            internal_table: (destination) The internal table which will be overwritten.
+            external_table_name: (source) The external table from which to load.
+            where_sql: (Optional) A where clause, for filtering data.
+                Do not include the "WHERE" keyword.
+                If no clause is provided (default), the entire external table is loaded.
+        """
+
+        cursor = self.connection.cursor()
+
+        # verify the internal table is partitioned by source file name & timestamp
+        if not set(c.name for c in FILE_METADATA_COLUMNS).issubset(
+            set(self.get_table_partition_columns(internal_table.table_name))
+        ):
+            raise RuntimeError(
+                f"Internal table {internal_table.table_name} must be partitioned "
+                f"by source_file_name and source_file_timestamp."
+            )
+
+        for part_key in self.get_partition_keys(
+            table_name=internal_table.table_name, where_sql=where_sql
+        ):
+            cursor.execute(
+                f"ALTER TABLE {internal_table.table_name} DROP PARTITION {part_key}"
+            )
