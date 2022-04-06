@@ -137,6 +137,43 @@ class TableService:
         cursor.execute(sql)
         return cursor.fetchall()
 
+    def _insert(
+        self, internal_table: Table, external_table_name: str, where_sql: Optional[str]
+    ):
+        """
+        Internal method to perform the insert step. Not idempotent.
+
+        Args:
+            internal_table: Internal table object, to write into.
+            external_table_name: Name of the external table to read from.
+            where_sql: (Optional) A where clause, for filtering data.
+                Do not include the "WHERE" keyword.
+                If no clause is provided (default), the entire external table is loaded.
+        """
+
+        # if the internal table on firebolt has the file metadata columns,
+        # we need to be sure to include them as part of our insert.
+        add_file_metadata = set(c.name for c in FILE_METADATA_COLUMNS).issubset(
+            set(self.get_table_columns(internal_table.table_name))
+        )
+
+        column_names = [
+            column.name
+            for column in internal_table.columns
+            + (FILE_METADATA_COLUMNS if add_file_metadata else [])
+        ]
+        insert_query = (
+            f"INSERT INTO {internal_table.table_name}\n"
+            f"SELECT {', '.join(column_names)}\n"
+            f"FROM {external_table_name}\n"
+        )
+        if where_sql is not None:
+            insert_query += f"WHERE {where_sql}"
+
+        formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
+        cursor = self.connection.cursor()
+        cursor.execute(query=formatted_query)
+
     def insert_full_overwrite(
         self,
         internal_table: Table,
@@ -177,27 +214,11 @@ class TableService:
 
         self.create_internal_table(table=internal_table)
 
-        # if the internal table on firebolt has the file metadata columns,
-        # we need to be sure to include them as part of our insert.
-        add_file_metadata = set(c.name for c in FILE_METADATA_COLUMNS).issubset(
-            set(self.get_table_columns(internal_table.table_name))
+        self._insert(
+            internal_table=internal_table,
+            external_table_name=external_table_name,
+            where_sql=where_sql,
         )
-
-        column_names = [
-            column.name
-            for column in internal_table.columns
-            + (FILE_METADATA_COLUMNS if add_file_metadata else [])
-        ]
-        insert_query = (
-            f"INSERT INTO {internal_table.table_name}\n"
-            f"SELECT {', '.join(column_names)}\n"
-            f"FROM {external_table_name}\n"
-        )
-        if where_sql is not None:
-            insert_query += f"WHERE {where_sql}"
-
-        formatted_query = sqlparse.format(insert_query, reindent=True, indent_width=4)
-        cursor.execute(query=formatted_query)
 
     def insert_incremental_overwrite(
         self,
@@ -237,3 +258,9 @@ class TableService:
             cursor.execute(
                 f"ALTER TABLE {internal_table.table_name} DROP PARTITION {part_key}"
             )
+
+        self._insert(
+            internal_table=internal_table,
+            external_table_name=external_table_name,
+            where_sql=where_sql,
+        )
