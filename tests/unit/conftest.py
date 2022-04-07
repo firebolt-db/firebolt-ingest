@@ -39,12 +39,12 @@ def mock_table_partitioned_by_file():
         columns=[
             Column(name="id", type="INT"),
             Column(name="name", type="TEXT"),
-            Column(name="source_table_name", type="TEXT"),
-            Column(name="source_table_timestamp", type="TIMESTAMP"),
+            Column(name="source_file_name", type="TEXT"),
+            Column(name="source_file_timestamp", type="TIMESTAMP"),
         ],
         partitions=[
-            Partition(column_name="source_table_name"),
-            Partition(column_name="source_table_timestamp"),
+            Partition(column_name="source_file_name"),
+            Partition(column_name="source_file_timestamp"),
         ],
     )
 

@@ -113,3 +113,14 @@ def test_insert_incremental_overwrite(
         external_table_name="external_table_name",
         where_sql="1=1",
     )
+
+    expected_query = sqlparse.format(
+        f"INSERT INTO table_name "
+        f"SELECT id, name , source_file_name, source_file_timestamp "
+        f"FROM external_table_name "
+        f"WHERE 1=1",
+        reindent=True,
+        indent_width=4,
+    )
+
+    cursor_mock.execute.assert_called_with(query=expected_query)
