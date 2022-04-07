@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import sqlparse
 
 from firebolt_ingest.aws_settings import AWSSettings
-from firebolt_ingest.model.table import Table
+from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
 from firebolt_ingest.service.table import TableService
 
 
@@ -90,3 +90,26 @@ def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table
     )
 
     cursor_mock.execute.assert_called_with(query=expected_query)
+
+
+def test_insert_incremental_overwrite(
+    mock_aws_settings: AWSSettings, mock_table_partitioned_by_file: Table
+):
+    """
+    Call insert incremental overwrite and check
+    that the drop partition & insert into queries are passed to the cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
+    connection.cursor.return_value = cursor_mock
+
+    cursor_mock.fetchall.return_value = [c.name for c in FILE_METADATA_COLUMNS]
+
+    ts = TableService(connection)
+    ts.create_internal_table = MagicMock()
+    ts.insert_incremental_overwrite(
+        internal_table=mock_table_partitioned_by_file,
+        external_table_name="external_table_name",
+        where_sql="1=1",
+    )
