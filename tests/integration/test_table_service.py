@@ -78,7 +78,7 @@ def test_create_external_table(connection):
     s3_url = "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
 
     ts = TableService(connection)
-    table_name = "ex_lineitem_ingest_integration"
+    table_name = "lineitem_ingest_integration"
     columns = [
         Column(name="l_orderkey", type="LONG"),
         Column(name="l_partkey", type="LONG"),
@@ -95,9 +95,9 @@ def test_create_external_table(connection):
     )
 
     cursor = connection.cursor()
-    check_columns(cursor, table_name, columns)
+    check_columns(cursor, f"ex_{table_name}", columns)
 
-    cursor.execute(f"DROP TABLE {table_name}")
+    cursor.execute(f"DROP TABLE ex_{table_name}")
 
 
 def test_create_external_table_twice(connection):
@@ -109,7 +109,7 @@ def test_create_external_table_twice(connection):
     s3_url = "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
     aws_settings = AWSSettings(s3_url=s3_url)
 
-    table_name = "ex_lineitem_ingest_integration"
+    table_name = "lineitem_ingest_integration"
     table = Table(
         table_name=table_name,
         columns=[
@@ -125,7 +125,7 @@ def test_create_external_table_twice(connection):
     with pytest.raises(FireboltError):
         ts.create_external_table(table, aws_settings)
 
-    connection.cursor().execute(f"DROP TABLE {table_name}")
+    connection.cursor().execute(f"DROP TABLE ex_{table_name}")
 
 
 def validate_ingestion(

@@ -11,6 +11,8 @@ from firebolt_ingest.utils import (
     get_table_schema,
 )
 
+EXTERNAL_TABLE_PREFIX = "ex_"
+
 
 class TableService:
     """ """
@@ -45,7 +47,7 @@ class TableService:
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE {table.table_name}\n"
+            f"CREATE EXTERNAL TABLE {EXTERNAL_TABLE_PREFIX}{table.table_name}\n"
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"

@@ -88,3 +88,8 @@ Note: while there is a mypy plugin for pre-commit, I found it buggy and not wort
 * Write docstrings for everything, and use Google Docstring style
 * Write unit tests for all major functionality
 * If you are going to add a CLI, consider using typer (or argparse).
+
+
+## Contributing
+
+See: [CONTRIBUTING.MD](https://github.com/firebolt-db/firebolt-sdk/tree/main/CONTRIBUTING.MD)
