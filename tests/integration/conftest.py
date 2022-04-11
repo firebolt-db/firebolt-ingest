@@ -70,15 +70,34 @@ def connection(
     connection.close()
 
 
+@fixture(scope="session")
+def s3_url() -> str:
+    return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
+
+
 @fixture
 def mock_table() -> Table:
     return Table(
-        table_name="integration_test_tmp_table",
+        table_name="lineitem",
         columns=[
             Column(name="l_orderkey", type="LONG"),
             Column(name="l_partkey", type="LONG"),
+            Column(name="l_suppkey", type="LONG"),
+            Column(name="l_linenumber", type="INT"),
+            Column(name="l_quantity", type="LONG"),
+            Column(name="l_extendedprice", type="LONG"),
+            Column(name="l_discount", type="LONG"),
+            Column(name="l_tax", type="LONG"),
+            Column(name="l_returnflag", type="TEXT"),
+            Column(name="l_linestatus", type="TEXT"),
+            Column(name="l_shipdate", type="TEXT"),
+            Column(name="l_commitdate", type="TEXT"),
+            Column(name="l_receiptdate", type="TEXT"),
+            Column(name="l_shipinstruct", type="TEXT"),
+            Column(name="l_shipmode", type="TEXT"),
+            Column(name="l_comment", type="TEXT"),
         ],
         file_type="PARQUET",
         object_pattern=["*.parquet"],
-        primary_index=["l_orderkey"],
+        primary_index=["l_orderkey", "l_linenumber"],
     )
