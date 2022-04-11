@@ -132,7 +132,7 @@ def validate_ingestion(
     cursor: Cursor, internal_table_name: str, external_table_name: str
 ):
     """
-    validate, that the number of datapoints
+    validate, that the number of rows
     in the external and internal tables the same
     """
     cursor.execute(
@@ -144,7 +144,7 @@ def validate_ingestion(
 
     assert (
         data[0][0] == 1
-    ), "Number of datapoint in the external and internal tables are not equal"
+    ), "Number of rows  in the external and internal tables are not equal"
 
 
 def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
