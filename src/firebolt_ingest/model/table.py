@@ -61,6 +61,8 @@ class Column(BaseModel):
     name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     type: str = Field(min_length=1, max_length=255)
     extract_partition: Optional[str] = Field(min_length=1, max_length=255)
+    nullable: Optional[bool] = None
+    unique: Optional[bool] = None
 
     @root_validator
     def type_validator(cls, values: dict) -> dict:
@@ -173,15 +175,19 @@ class Table(BaseModel, YamlModelMixin):
             list of prepared statement arguments
         """
         additional_partitions = FILE_METADATA_COLUMNS if add_file_metadata else []
-        return (
-            ", ".join(
-                [
-                    f"{column.name} {column.type}"
-                    for column in self.columns + additional_partitions
-                ]
-            ),
-            [],
-        )
+
+        columns_str = []
+        for column in self.columns + additional_partitions:
+            column_str = f"{column.name} {column.type}"
+
+            column_str += " UNIQUE" if column.unique else ""
+
+            if column.nullable is not None:
+                column_str += " NULL" if column.nullable else " NOT NULL"
+
+            columns_str.append(column_str)
+
+        return ", ".join(columns_str), []
 
     def generate_external_columns_string(self) -> Tuple[str, List]:
         """
