@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 
 import sqlparse  # type: ignore
 from firebolt.async_db.connection import Connection
@@ -93,7 +93,7 @@ class TableService:
         cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
         return [column.name for column in cursor.description]
 
-    def get_table_partition_columns(self, table_name: str) -> Any:
+    def get_table_partition_columns(self, table_name: str) -> List[str]:
         """
         Get the names of partition columns of an existing table on Firebolt.
 
@@ -105,16 +105,16 @@ class TableService:
         SELECT column_name
         FROM information_schema.columns
         WHERE
-            table_schema = '{self.connection.database}' AND
-            table_name = '{table_name}' AND
+            table_schema = ? AND
+            table_name = ? AND
             is_in_partition_expr = 'YES'
         """
-        cursor.execute(sql)
-        return cursor.fetchall()
+        cursor.execute(query=sql, parameters=(self.connection.database, table_name))
+        return cursor.fetchall()  # type: ignore
 
     def get_partition_keys(
         self, table_name: str, where_sql: Optional[str] = None
-    ) -> Any:
+    ) -> Sequence[Any]:
         """
         Get the partition keys of an existing table on Firebolt.
         Args:
@@ -135,7 +135,7 @@ class TableService:
 
         cursor = self.connection.cursor()
         cursor.execute(sql)
-        return cursor.fetchall()
+        return cursor.fetchall()  # type: ignore
 
     def _insert(
         self, internal_table: Table, external_table_name: str, where_sql: Optional[str]
