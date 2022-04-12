@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Literal, Optional, Tuple
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, conlist, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
@@ -99,26 +99,12 @@ class Partition(BaseModel):
 
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
-    columns: List[Column]
-    primary_index: List[str] = []
+    columns: conlist(Column, min_items=1)  # type: ignore
+    primary_index: conlist(str, min_items=1)  # type: ignore
     partitions: List[Partition] = []
     file_type: FileType
-    object_pattern: List[str]
+    object_pattern: conlist(str, min_items=1)  # type: ignore
     compression: Optional[Literal["GZIP"]] = None
-
-    @root_validator
-    def non_empty_object_pattern(cls, values: dict) -> dict:
-        if not values.get("object_pattern"):
-            raise ValueError("At least one object pattern has to be specified")
-
-        return values
-
-    @root_validator
-    def non_empty_column_list(cls, values: dict) -> dict:
-        if not values.get("columns"):
-            raise ValueError("Table should have at least one column")
-
-        return values
 
     @root_validator
     def primary_index_columns(cls, values: dict) -> dict:
