@@ -131,8 +131,7 @@ def test_create_external_table_twice(connection):
 def validate_ingestion(
     cursor: Cursor, internal_table_name: str, external_table_name: str
 ):
-    """
-    validate, that the number of datapoints
+    """validate, that the number of rows
     in the external and internal tables the same
     """
     cursor.execute(
@@ -144,7 +143,7 @@ def validate_ingestion(
 
     assert (
         data[0][0] == 1
-    ), "Number of datapoint in the external and internal tables are not equal"
+    ), "Number of rows  in the external and internal tables are not equal"
 
 
 def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
@@ -159,9 +158,57 @@ def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
     ts.insert_full_overwrite(
         internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
+        firebolt_dont_wait_for_upload_to_s3=True,
     )
 
     cursor = connection.cursor()
     validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
     cursor.execute(f"DROP TABLE {mock_table.table_name}")
     cursor.execute(f"DROP TABLE ex_{mock_table.table_name}")
+
+
+def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connection):
+    """
+    Do full overwrite of the internal table twice,
+    validating the ingestion after each overwrite
+    """
+    ts = TableService(connection)
+    cursor = connection.cursor()
+
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts.insert_full_overwrite(
+        internal_table_name=mock_table.table_name,
+        external_table_name=f"ex_{mock_table.table_name}",
+        firebolt_dont_wait_for_upload_to_s3=True,
+    )
+    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
+
+    ts.insert_full_overwrite(
+        internal_table_name=mock_table.table_name,
+        external_table_name=f"ex_{mock_table.table_name}",
+        firebolt_dont_wait_for_upload_to_s3=True,
+    )
+    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
+
+    cursor.execute(f"DROP TABLE {mock_table.table_name}")
+    cursor.execute(f"DROP TABLE ex_{mock_table.table_name}")
+
+
+def test_ingestion_incompatible_schema(mock_table: Table, s3_url: str, connection):
+    """
+    Validate, that if the schemes of external and internal tables do not match
+    the insert_full_overwrite raises an exception
+    """
+    ts = TableService(connection)
+
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    mock_table.columns.append(Column(name="non_existing_column", type="TEXT"))
+
+    with pytest.raises(FireboltError):
+        ts.insert_full_overwrite(
+            internal_table_name=mock_table.table_name,
+            external_table_name=f"ex_{mock_table.table_name}",
+            firebolt_dont_wait_for_upload_to_s3=True,
+        )
+
+    connection.cursor().execute(f"DROP TABLE ex_{mock_table.table_name}")

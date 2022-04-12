@@ -72,7 +72,6 @@ class TableService:
             table: table definition
         """
 
-        # TODO: partition support, primary index support
         columns_stmt, columns_params = table.generate_internal_columns_string(
             add_file_metadata
         )
@@ -90,6 +89,7 @@ class TableService:
         self,
         internal_table_name: str,
         external_table_name: str,
+        firebolt_dont_wait_for_upload_to_s3: bool = False,
     ) -> None:
         """
         Perform a full overwrite from an external table into an internal table.
@@ -103,6 +103,10 @@ class TableService:
             internal_table_name: (destination) The internal table which
                                  will be overwritten.
             external_table_name: (source) The external table from which to load.
+
+            firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
+                wait until the changes will be written to s3.
+
         """
         cursor = self.connection.cursor()
 
@@ -123,5 +127,7 @@ class TableService:
             f"FROM {external_table_name}\n"
         )
 
-        cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
+        if firebolt_dont_wait_for_upload_to_s3:
+            cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
+
         cursor.execute(query=insert_query)
