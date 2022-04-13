@@ -90,6 +90,7 @@ def test_create_external_table(connection):
             columns=columns,
             file_type="PARQUET",
             object_pattern=["*.parquet"],
+            primary_index=["l_orderkey"],
         ),
         aws_settings=AWSSettings(s3_url=s3_url),
     )
@@ -118,6 +119,7 @@ def test_create_external_table_twice(connection):
         ],
         file_type="PARQUET",
         object_pattern=["*.parquet"],
+        primary_index=["l_orderkey"],
     )
 
     ts.create_external_table(table, aws_settings)
@@ -176,6 +178,8 @@ def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connecti
     cursor = connection.cursor()
 
     ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts.create_internal_table(mock_table)
+
     ts.insert_full_overwrite(
         internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
