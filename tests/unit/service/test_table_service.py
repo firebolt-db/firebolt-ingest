@@ -34,6 +34,58 @@ def test_create_external_table_happy_path(
     )
 
 
+def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: Table):
+    """
+    call create external table and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    mock_table.file_type = "JSON"
+    mock_table.json_parse_as_text = True
+
+    ts = TableService(connection)
+    ts.create_external_table(mock_table, mock_aws_settings)
+
+    cursor_mock.execute.assert_called_once_with(
+        "CREATE EXTERNAL TABLE ex_table_name\n"
+        "(id INT, name TEXT)\n"
+        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
+        "URL = ?\n"
+        "OBJECT_PATTERN = ?, ?\n"
+        "TYPE = (JSON PARSE_AS_TEXT = 'TRUE')\n",
+        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+    )
+
+
+def test_create_external_table_csv(mock_aws_settings: AWSSettings, mock_table: Table):
+    """
+    call create external table and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    mock_table.file_type = "CSV"
+    mock_table.csv_skip_header_row = False
+
+    ts = TableService(connection)
+    ts.create_external_table(mock_table, mock_aws_settings)
+
+    cursor_mock.execute.assert_called_once_with(
+        "CREATE EXTERNAL TABLE ex_table_name\n"
+        "(id INT, name TEXT)\n"
+        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
+        "URL = ?\n"
+        "OBJECT_PATTERN = ?, ?\n"
+        "TYPE = (CSV SKIP_HEADER_ROWS = 0)\n",
+        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+    )
+
+
 def test_create_internal_table_happy_path(
     mock_aws_settings: AWSSettings, mock_table: Table, mock_table_partitioned: Table
 ):
