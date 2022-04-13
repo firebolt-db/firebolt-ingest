@@ -48,7 +48,7 @@ class TableService:
             f"{cred_stmt}\n"
             f"URL = ?\n"
             f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))}\n"
-            f"TYPE = ({table.file_type})\n"
+            f"TYPE = ({table.file_type.name})\n"
         )
         if table.compression:
             query += f"COMPRESSION = {table.compression}\n"

@@ -1,6 +1,12 @@
 import pytest
 
-from firebolt_ingest.model.table import Column, DatetimePart, Partition, Table
+from firebolt_ingest.model.table import (
+    Column,
+    DatetimePart,
+    FileType,
+    Partition,
+    Table,
+)
 
 
 def prune_nested_dict(d):
@@ -47,7 +53,7 @@ def test_partition_extract_type():
             table_name="test_table_1",
             columns=[Column(name="col_1", type="INT")],
             partitions=[Partition(column_name="col_1", datetime_part=DatetimePart.DAY)],
-            file_type="PARQUET",
+            file_type=FileType.PARQUET,
             object_pattern="*.parquet",
         )
 
@@ -61,7 +67,7 @@ def test_partition_valid_column():
             table_name="test_table_1",
             columns=[Column(name="col_1", type="INT")],
             partitions=[Partition(column_name="bad_col")],
-            file_type="PARQUET",
+            file_type=FileType.PARQUET,
             object_pattern="*.parquet",
         )
 
