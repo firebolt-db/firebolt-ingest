@@ -103,7 +103,7 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
         cursor: Firebolt database cursor
         table_name: Name of the table.
     """
-    sql = f"""
+    sql = """
     SELECT column_name
     FROM information_schema.columns
     WHERE

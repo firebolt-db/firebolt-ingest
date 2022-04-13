@@ -154,15 +154,21 @@ class TableService:
 
         # if the internal table on firebolt has the file metadata columns,
         # we need to be sure to include them as part of our insert.
-        add_file_metadata = set(c.name for c in FILE_METADATA_COLUMNS).issubset(
-            set(get_table_columns(cursor=cursor, table_name=internal_table.table_name))
+        metadata_columns = sorted(
+            list(
+                set(c.name for c in FILE_METADATA_COLUMNS).intersection(
+                    set(
+                        get_table_columns(
+                            cursor=cursor, table_name=internal_table.table_name
+                        )
+                    )
+                )
+            )
         )
 
         column_names = [
-            column.name
-            for column in internal_table.columns
-            + (FILE_METADATA_COLUMNS if add_file_metadata else [])
-        ]
+            column.name for column in internal_table.columns
+        ] + metadata_columns
         insert_query = (
             f"INSERT INTO {internal_table.table_name}\n"
             f"SELECT {', '.join(column_names)}\n"
