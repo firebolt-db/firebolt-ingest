@@ -52,7 +52,7 @@ class TableService:
             f"{cred_stmt}\n"
             f"URL = ?\n"
             f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))}\n"
-            f"TYPE = ({table.file_type.name})\n"
+            f"TYPE = ({table.generate_file_type()})\n"
         )
         if table.compression:
             query += f"COMPRESSION = {table.compression}\n"
@@ -75,10 +75,11 @@ class TableService:
         columns_stmt, columns_params = table.generate_internal_columns_string(
             add_file_metadata
         )
-        query = f"CREATE FACT TABLE {table.table_name}\n" f"({columns_stmt})\n"
-
-        if table.primary_index:
-            query += f"PRIMARY INDEX {table.generate_primary_index_string()}\n"
+        query = (
+            f"CREATE FACT TABLE {table.table_name}\n"
+            f"({columns_stmt})\n"
+            f"PRIMARY INDEX {table.generate_primary_index_string()}\n"
+        )
 
         if table.partitions:
             query += f"PARTITION BY {table.generate_partitions_string(add_file_metadata=add_file_metadata)}\n"  # noqa: E501

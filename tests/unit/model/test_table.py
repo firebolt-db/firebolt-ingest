@@ -1,12 +1,7 @@
 import pytest
+from pydantic import ValidationError
 
-from firebolt_ingest.model.table import (
-    Column,
-    DatetimePart,
-    FileType,
-    Partition,
-    Table,
-)
+from firebolt_ingest.model.table import Column, DatetimePart, Partition, Table
 
 
 def prune_nested_dict(d):
@@ -53,7 +48,7 @@ def test_partition_extract_type():
             table_name="test_table_1",
             columns=[Column(name="col_1", type="INT")],
             partitions=[Partition(column_name="col_1", datetime_part=DatetimePart.DAY)],
-            file_type=FileType.PARQUET,
+            file_type="PARQUET",
             object_pattern="*.parquet",
         )
 
@@ -67,7 +62,7 @@ def test_partition_valid_column():
             table_name="test_table_1",
             columns=[Column(name="col_1", type="INT")],
             partitions=[Partition(column_name="bad_col")],
-            file_type=FileType.PARQUET,
+            file_type="PARQUET",
             object_pattern="*.parquet",
         )
 
@@ -136,7 +131,18 @@ def test_empty_object_pattern(table_dict):
     """
 
     table_dict["object_pattern"] = []
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValidationError) as e:
         Table.parse_obj(table_dict)
 
-    assert "object pattern" in str(e)
+    assert "object_pattern" in str(e)
+
+
+def test_empty_primary_index(table_dict):
+    """
+    Ensure an empty primary index raises a validation error
+    """
+    table_dict["primary_index"] = []
+    with pytest.raises(ValidationError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "primary_index" in str(e)
