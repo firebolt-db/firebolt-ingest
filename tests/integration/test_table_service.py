@@ -90,6 +90,7 @@ def test_create_external_table(connection):
             columns=columns,
             file_type="PARQUET",
             object_pattern=["*.parquet"],
+            primary_index=["l_orderkey"],
         ),
         aws_settings=AWSSettings(s3_url=s3_url),
     )
@@ -118,6 +119,7 @@ def test_create_external_table_twice(connection):
         ],
         file_type="PARQUET",
         object_pattern=["*.parquet"],
+        primary_index=["l_orderkey"],
     )
 
     ts.create_external_table(table, aws_settings)
@@ -131,8 +133,7 @@ def test_create_external_table_twice(connection):
 def validate_ingestion(
     cursor: Cursor, internal_table_name: str, external_table_name: str
 ):
-    """
-    validate, that the number of rows
+    """validate, that the number of rows
     in the external and internal tables the same
     """
     cursor.execute(
@@ -157,28 +158,7 @@ def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
     ts.create_internal_table(mock_table)
 
     ts.insert_full_overwrite(
-        internal_table=mock_table,
-        external_table_name=f"ex_{mock_table.table_name}",
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
-
-    cursor = connection.cursor()
-    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
-    cursor.execute(f"DROP TABLE {mock_table.table_name}")
-    cursor.execute(f"DROP TABLE ex_{mock_table.table_name}")
-
-
-def test_ingestion_full_overwrite_no_internal_table(
-    mock_table: Table, s3_url: str, connection
-):
-    """
-    Happy path, internal table doesn't exists
-    """
-    ts = TableService(connection)
-
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
-    ts.insert_full_overwrite(
-        internal_table=mock_table,
+        internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
@@ -198,15 +178,17 @@ def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connecti
     cursor = connection.cursor()
 
     ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts.create_internal_table(mock_table)
+
     ts.insert_full_overwrite(
-        internal_table=mock_table,
+        internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
     validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
 
     ts.insert_full_overwrite(
-        internal_table=mock_table,
+        internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
@@ -228,7 +210,7 @@ def test_ingestion_incompatible_schema(mock_table: Table, s3_url: str, connectio
 
     with pytest.raises(FireboltError):
         ts.insert_full_overwrite(
-            internal_table=mock_table,
+            internal_table_name=mock_table.table_name,
             external_table_name=f"ex_{mock_table.table_name}",
             firebolt_dont_wait_for_upload_to_s3=True,
         )

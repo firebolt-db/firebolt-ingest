@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-import sqlparse
+from pytest_mock import MockerFixture
 
 from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.model.table import Table
@@ -111,7 +111,9 @@ def test_create_internal_table_happy_path(
     )
 
 
-def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table):
+def test_insert_full_overwrite(
+    mock_aws_settings: AWSSettings, mocker: MockerFixture, mock_table: Table
+):
     """
     Call insert full overwrite and check
     that the correct drop & insert into queries are passed to the cursor
@@ -121,25 +123,32 @@ def test_insert_full_overwrite(mock_aws_settings: AWSSettings, mock_table: Table
     cursor_mock.execute.return_value = 0
     connection.cursor.return_value = cursor_mock
 
+    get_table_schema_mock = mocker.patch(
+        "firebolt_ingest.service.table.get_table_schema"
+    )
+    get_table_schema_mock.return_value = "create_fact_table_request"
+
+    get_table_columns_mock = mocker.patch(
+        "firebolt_ingest.service.table.get_table_columns"
+    )
+    get_table_columns_mock.return_value = ["id", "name"]
+
     ts = TableService(connection)
     ts.create_internal_table = MagicMock()
     ts.insert_full_overwrite(
-        internal_table=mock_table,
+        internal_table_name="internal_table_name",
         external_table_name="external_table_name",
-        where_sql="1=1",
     )
 
-    cursor_mock.execute.assert_any_call(query="DROP TABLE IF EXISTS table_name CASCADE")
-
-    ts.create_internal_table.assert_called_once_with(table=mock_table)
-
-    expected_query = sqlparse.format(
-        f"INSERT INTO table_name "
-        f"SELECT id, name "
-        f"FROM external_table_name "
-        f"WHERE 1=1",
-        reindent=True,
-        indent_width=4,
+    cursor_mock.execute.assert_any_call(query="create_fact_table_request")
+    cursor_mock.execute.assert_any_call(
+        query="DROP TABLE IF EXISTS internal_table_name CASCADE"
+    )
+    cursor_mock.execute.assert_any_call(
+        query="INSERT INTO internal_table_name\n"
+        "SELECT id, name\n"
+        "FROM external_table_name\n"
     )
 
-    cursor_mock.execute.assert_called_with(query=expected_query)
+    get_table_schema_mock.assert_called_once()
+    get_table_columns_mock.assert_called_once()

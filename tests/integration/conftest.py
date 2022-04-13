@@ -53,11 +53,6 @@ def api_endpoint() -> str:
 
 
 @fixture(scope="session")
-def s3_url() -> str:
-    return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
-
-
-@fixture(scope="session")
 def connection(
     engine_name, database_name, username, password, account_name, api_endpoint
 ):
@@ -73,6 +68,11 @@ def connection(
     yield connection
 
     connection.close()
+
+
+@fixture(scope="session")
+def s3_url() -> str:
+    return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
 
 
 @fixture
