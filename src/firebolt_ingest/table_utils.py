@@ -1,4 +1,4 @@
-from typing import List, Sequence
+from typing import Any, List, Optional, Sequence
 
 from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
@@ -48,7 +48,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     cursor.execute(query=drop_query)
 
     # verify that the drop succeeded
-    if does_table_exists(cursor, table_name):
+    if does_table_exist(cursor, table_name):
         raise FireboltError(f"Table {table_name} did not drop successfully.")
 
 
@@ -63,7 +63,55 @@ def get_table_columns(cursor: Cursor, table_name: str) -> List[str]:
     return [column.name for column in cursor.description]
 
 
-def does_table_exists(cursor: Cursor, table_name: str) -> bool:
+def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
+    """
+    Get the names of partition columns of an existing table on Firebolt.
+
+    Args:
+        cursor: Firebolt database cursor
+        table_name: Name of the table.
+    """
+    sql = f"""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE
+        table_schema = ? AND
+        table_name = ? AND
+        is_in_partition_expr = 'YES'
+    """
+    cursor.execute(query=sql, parameters=(cursor.connection.database, table_name))
+    return cursor.fetchall()  # type: ignore
+
+
+def get_partition_keys(
+    cursor: Cursor, table_name: str, where_sql: Optional[str] = None
+) -> Sequence[Any]:
+    """
+    Get the partition keys of an existing table on Firebolt.
+    Args:
+        cursor: Firebolt database cursor
+        table_name: Name of the table.
+        where_sql: (Optional) A where clause, for filtering data.
+            Do not include the "WHERE" keyword.
+            If no clause is provided (default), all partition keys are returned.
+    """
+    # FUTURE: replace this query with `show partitions` when
+    # https://packboard.atlassian.net/browse/FIR-2370 is completed
+    part_expr = ",".join(
+        get_table_partition_columns(cursor=cursor, table_name=table_name)
+    )
+    sql = f"""
+    SELECT DISTINCT {part_expr}
+    FROM {table_name}
+    """
+    if where_sql is not None:
+        sql += f"WHERE {where_sql}"
+
+    cursor.execute(sql)
+    return cursor.fetchall()  # type: ignore
+
+
+def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     """
     Check whether table with table_name exists,
     and return True if it exists, False otherwise

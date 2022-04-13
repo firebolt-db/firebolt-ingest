@@ -47,6 +47,7 @@ def mock_table_partitioned_by_file():
             Partition(column_name="source_file_name"),
             Partition(column_name="source_file_timestamp"),
         ],
+        primary_index=["id"],
     )
 
 
