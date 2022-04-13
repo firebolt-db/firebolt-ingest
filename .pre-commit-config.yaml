@@ -28,13 +28,12 @@ repos:
       - id: isort
 
   - repo: https://github.com/psf/black
-    rev: 21.7b0
+    rev: 22.3.0
     hooks:
       - id: black
-        language-version: 3.9
 
   - repo: https://github.com/dfm/black_nbconvert
-    rev: v0.3.0
+    rev: v0.4.0
     hooks:
       - id: black_nbconvert
 
