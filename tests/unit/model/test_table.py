@@ -135,3 +135,14 @@ def test_empty_object_pattern(table_dict):
         Table.parse_obj(table_dict)
 
     assert "object_pattern" in str(e)
+
+
+def test_empty_primary_index(table_dict):
+    """
+    Ensure an empty primary index raises a validation error
+    """
+    table_dict["primary_index"] = []
+    with pytest.raises(ValidationError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "primary_index" in str(e)

@@ -104,6 +104,7 @@ def test_create_internal_table_happy_path(
         "CREATE FACT TABLE table_name\n"
         "(id INT, user STRING, birthdate DATE, "
         "source_file_name STRING, source_file_timestamp DATETIME)\n"
+        "PRIMARY INDEX id\n"
         "PARTITION BY user,EXTRACT(DAY FROM birthdate),"
         "source_file_name,source_file_timestamp\n",
         [],

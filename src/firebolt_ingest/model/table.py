@@ -94,7 +94,7 @@ class Partition(BaseModel):
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     columns: conlist(Column, min_items=1)  # type: ignore
-    primary_index: List[str] = []
+    primary_index: conlist(str, min_items=1)  # type: ignore
     partitions: List[Partition] = []
     file_type: Literal["CSV", "JSON", "ORC", "PARQUET", "TCV"]
     object_pattern: conlist(str, min_items=1)  # type: ignore

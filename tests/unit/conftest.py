@@ -26,6 +26,7 @@ def mock_table():
         file_type="PARQUET",
         object_pattern=["*0.parquet", "*1.parquet"],
         columns=[Column(name="id", type="INT"), Column(name="name", type="TEXT")],
+        primary_index=["id"],
     )
 
 
@@ -45,4 +46,5 @@ def mock_table_partitioned():
             Partition(column_name="user"),
             Partition(column_name="birthdate", datetime_part="DAY"),
         ],
+        primary_index=["id"],
     )
