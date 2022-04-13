@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Literal, Optional, Tuple
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, ValidationError, conlist, root_validator
 
 from firebolt_ingest.model import YamlModelMixin
 
@@ -37,12 +37,6 @@ def match_array(s: str) -> bool:
     return False
 
 
-class FileType(str, Enum):
-    ORC = "ORC"
-    PARQUET = "PARQUET"
-    TSV = "TSV"
-
-
 class DatetimePart(str, Enum):
     DAY = "DAY"
     DOW = "DOW"
@@ -61,6 +55,8 @@ class Column(BaseModel):
     name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     type: str = Field(min_length=1, max_length=255)
     extract_partition: Optional[str] = Field(min_length=1, max_length=255)
+    nullable: Optional[bool] = None
+    unique: Optional[bool] = None
 
     @root_validator
     def type_validator(cls, values: dict) -> dict:
@@ -97,24 +93,30 @@ class Partition(BaseModel):
 
 class Table(BaseModel, YamlModelMixin):
     table_name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
-    columns: List[Column]
-    primary_index: List[str] = []
+    columns: conlist(Column, min_items=1)  # type: ignore
+    primary_index: conlist(str, min_items=1)  # type: ignore
     partitions: List[Partition] = []
-    file_type: FileType
-    object_pattern: List[str]
+    file_type: Literal["CSV", "JSON", "ORC", "PARQUET", "TCV"]
+    object_pattern: conlist(str, min_items=1)  # type: ignore
     compression: Optional[Literal["GZIP"]] = None
+    csv_skip_header_row: Optional[bool] = None
+    json_parse_as_text: Optional[bool] = None
 
     @root_validator
-    def non_empty_object_pattern(cls, values: dict) -> dict:
-        if not values.get("object_pattern"):
-            raise ValueError("At least one object pattern has to be specified")
+    def file_type_additional_fields(cls, values: dict) -> dict:
+        """
+        validate that if csv_skip_header_row is set, then the file type is CSV
+        and if json_parse_as_text is set, the file type is JSON
+        """
+        if values.get("csv_skip_header_row") and values.get("file_type") != "CSV":
+            raise ValidationError(
+                ["csv_skip_header_row is only relevant for CSV file_type"], type(cls)
+            )
 
-        return values
-
-    @root_validator
-    def non_empty_column_list(cls, values: dict) -> dict:
-        if not values.get("columns"):
-            raise ValueError("Table should have at least one column")
+        if values.get("json_parse_as_text") and values.get("file_type") != "JSON":
+            raise ValidationError(
+                ["json_parse_as_text is only relevant for JSON file_type"], type(cls)
+            )
 
         return values
 
@@ -126,9 +128,12 @@ class Table(BaseModel, YamlModelMixin):
         column_names = {c.name for c in values["columns"]}
         for index_column in values.get("primary_index", []):
             if index_column not in column_names:
-                raise ValueError(
-                    f"Could not find primary index {index_column} "
-                    f"in the list of table columns."
+                raise ValidationError(
+                    [
+                        f"Could not find primary index {index_column}"
+                        f" in the list of table columns."
+                    ],
+                    type(cls),
                 )
         return values
 
@@ -142,19 +147,41 @@ class Table(BaseModel, YamlModelMixin):
         for partition in values.get("partitions", []):
 
             if partition.column_name not in column_name_to_type.keys():
-                raise ValueError(
-                    f"Could not find partition column name {partition.column_name} "
-                    f"in the list of table columns"
+                raise ValidationError(
+                    [
+                        f"Could not find partition column name {partition.column_name} "
+                        f"in the list of table columns"
+                    ],
+                    type(cls),
                 )
 
             if partition.datetime_part is not None:
                 partition_column_type = column_name_to_type.get(partition.column_name)
                 if partition_column_type not in DATE_TIME_TYPES:
-                    raise ValueError(
-                        f"Partition column {partition.column_name} must be a "
-                        f"compatible datetime type, not a {partition_column_type}"
+                    raise ValidationError(
+                        [
+                            f"Partition column {partition.column_name} must be a "
+                            f"compatible datetime type, not a {partition_column_type}"
+                        ],
+                        type(cls),
                     )
         return values
+
+    def generate_file_type(self) -> str:
+        """
+        Returns: a string with file_type and relevant argument
+        """
+        additional_params = ""
+        if self.file_type == "CSV" and self.csv_skip_header_row is not None:
+            additional_params = (
+                f" SKIP_HEADER_ROWS = {'1' if self.csv_skip_header_row else '0'}"
+            )
+        elif self.file_type == "JSON" and self.json_parse_as_text is not None:
+            additional_params = (
+                f" PARSE_AS_TEXT = '{'TRUE' if self.json_parse_as_text else 'FALSE'}'"
+            )
+
+        return f"{self.file_type}{additional_params}"
 
     def generate_internal_columns_string(
         self, add_file_metadata: bool
@@ -173,15 +200,19 @@ class Table(BaseModel, YamlModelMixin):
             list of prepared statement arguments
         """
         additional_partitions = FILE_METADATA_COLUMNS if add_file_metadata else []
-        return (
-            ", ".join(
-                [
-                    f"{column.name} {column.type}"
-                    for column in self.columns + additional_partitions
-                ]
-            ),
-            [],
-        )
+
+        columns_str = []
+        for column in self.columns + additional_partitions:
+            column_str = f"{column.name} {column.type}"
+
+            column_str += " UNIQUE" if column.unique else ""
+
+            if column.nullable is not None:
+                column_str += " NULL" if column.nullable else " NOT NULL"
+
+            columns_str.append(column_str)
+
+        return ", ".join(columns_str), []
 
     def generate_external_columns_string(self) -> Tuple[str, List]:
         """
