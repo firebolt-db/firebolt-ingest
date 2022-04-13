@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-import sqlparse
 from pytest_mock import MockerFixture
 
 from firebolt_ingest.aws_settings import AWSSettings
@@ -156,7 +155,9 @@ def test_insert_full_overwrite(
 
 
 def test_insert_incremental_overwrite(
-    mock_aws_settings: AWSSettings, mock_table_partitioned_by_file: Table
+    mocker: MockerFixture,
+    mock_aws_settings: AWSSettings,
+    mock_table_partitioned_by_file: Table,
 ):
     """
     Call insert incremental overwrite and check
@@ -169,6 +170,9 @@ def test_insert_incremental_overwrite(
 
     cursor_mock.fetchall.return_value = [c.name for c in FILE_METADATA_COLUMNS]
 
+    does_table_exist_mock = mocker.patch("firebolt_ingest.table_utils.does_table_exist")
+    does_table_exist_mock.return_value = True
+
     ts = TableService(connection)
     ts.create_internal_table = MagicMock()
     ts.insert_incremental_overwrite(
@@ -177,13 +181,10 @@ def test_insert_incremental_overwrite(
         where_sql="1=1",
     )
 
-    expected_query = sqlparse.format(
-        f"INSERT INTO table_name "
-        f"SELECT id, name , source_file_name, source_file_timestamp "
-        f"FROM external_table_name "
-        f"WHERE 1=1",
-        reindent=True,
-        indent_width=4,
+    expected_query = (
+        "INSERT INTO table_name\n"
+        "SELECT id, name, source_file_name, source_file_timestamp\n"
+        "FROM external_table_name\nWHERE 1=1"
     )
 
     cursor_mock.execute.assert_called_with(query=expected_query)

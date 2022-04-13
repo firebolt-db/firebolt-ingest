@@ -1,12 +1,35 @@
+from functools import wraps
 from typing import Any, List, Optional, Sequence
 
 from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
 
 
+def table_must_exist(func):
+    @wraps(func)
+    def with_table_existence_check(*args, **kwargs):
+        if not does_table_exist(
+            cursor=kwargs["cursor"], table_name=kwargs["table_name"]
+        ):
+            raise FireboltError(
+                f"Table {kwargs['table_name']} does not exist "
+                f"when calling {func.__name__}"
+            )
+        return func(*args, **kwargs)
+
+    return with_table_existence_check
+
+
 def get_table_schema(cursor: Cursor, table_name: str) -> str:
     """
     Return the create command of the existing table.
+
+    Args:
+        cursor: Firebolt database cursor
+        table_name: Name of the table
+
+    Returns:
+        CREATE TABLE ... command
     """
     cursor.execute("SHOW TABLES")
     data = cursor.fetchall()
@@ -40,7 +63,13 @@ def get_table_schema(cursor: Cursor, table_name: str) -> str:
 
 def drop_table(cursor: Cursor, table_name: str) -> None:
     """
-    Drop table table_name and raise an exception
+    Drop a table.
+
+    Args:
+        cursor: Firebolt database cursor
+        table_name: Name of the table to drop.
+
+    Raises an exception if the table did not drop.
     """
     drop_query = f"DROP TABLE IF EXISTS {table_name} CASCADE"
 
@@ -52,17 +81,20 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
         raise FireboltError(f"Table {table_name} did not drop successfully.")
 
 
+@table_must_exist
 def get_table_columns(cursor: Cursor, table_name: str) -> List[str]:
     """
     Get the column names of an existing table on Firebolt.
 
     Args:
+        cursor: Firebolt database cursor
         table_name: Name of the table
     """
     cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
     return [column.name for column in cursor.description]
 
 
+@table_must_exist
 def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
     """
     Get the names of partition columns of an existing table on Firebolt.
@@ -83,11 +115,13 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
     return cursor.fetchall()  # type: ignore
 
 
+@table_must_exist
 def get_partition_keys(
     cursor: Cursor, table_name: str, where_sql: Optional[str] = None
 ) -> Sequence[Any]:
     """
     Get the partition keys of an existing table on Firebolt.
+
     Args:
         cursor: Firebolt database cursor
         table_name: Name of the table.
