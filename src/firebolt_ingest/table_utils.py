@@ -48,9 +48,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     cursor.execute(query=drop_query)
 
     # verify that the drop succeeded
-    find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
-
-    if cursor.execute(find_query, [table_name]) != 0:
+    if does_table_exists(cursor, table_name):
         raise FireboltError(f"Table {table_name} did not drop successfully.")
 
 
@@ -63,3 +61,13 @@ def get_table_columns(cursor: Cursor, table_name: str) -> List[str]:
     """
     cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
     return [column.name for column in cursor.description]
+
+
+def does_table_exists(cursor: Cursor, table_name: str) -> bool:
+    """
+    Check whether table with table_name exists,
+    and return True if it exists, False otherwise
+    """
+    find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
+
+    return cursor.execute(find_query, [table_name]) != 0
