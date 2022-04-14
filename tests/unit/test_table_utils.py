@@ -4,6 +4,7 @@ from pytest import fixture
 from pytest_mock import MockerFixture
 
 from firebolt_ingest.table_utils import (
+    does_table_exist,
     drop_table,
     get_table_columns,
     get_table_schema,
@@ -54,3 +55,13 @@ def test_get_table_columns(mocker: MockerFixture, table_name: str, cursor: Magic
 
     assert columns == [column.name for column in cursor.description]
     cursor.execute.assert_called_once_with(f"SELECT * FROM {table_name} LIMIT 0")
+
+
+def test_does_table_exist(table_name: str, cursor: MagicMock):
+    cursor.execute.return_value = 1
+
+    assert does_table_exist(cursor=cursor, table_name=table_name)
+
+    cursor.execute.assert_called_once_with(
+        f"SELECT * FROM information_schema.tables WHERE table_name = ?", [table_name]
+    )
