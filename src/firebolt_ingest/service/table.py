@@ -1,17 +1,13 @@
-from typing import Optional
-
 from firebolt.async_db.connection import Connection
 
 from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import FILE_METADATA_COLUMNS, Table
+from firebolt_ingest.model.table import Table
 from firebolt_ingest.table_utils import (
     drop_table,
-    get_partition_keys,
     get_table_columns,
-    get_table_partition_columns,
     get_table_schema,
 )
 
@@ -136,94 +132,3 @@ class TableService:
             cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
 
         cursor.execute(query=insert_query)
-
-    def _insert(
-        self, internal_table: Table, external_table_name: str, where_sql: Optional[str]
-    ):
-        """
-        Internal method to perform the insert step. Not idempotent.
-
-        Args:
-            internal_table: Internal table object, to write into.
-            external_table_name: Name of the external table to read from.
-            where_sql: (Optional) A where clause, for filtering data.
-                Do not include the "WHERE" keyword.
-                If no clause is provided (default), the entire external table is loaded.
-        """
-        cursor = self.connection.cursor()
-
-        # if the internal table on firebolt has the file metadata columns,
-        # we need to be sure to include them as part of our insert.
-        metadata_columns = sorted(
-            list(
-                set(c.name for c in FILE_METADATA_COLUMNS).intersection(
-                    set(
-                        get_table_columns(
-                            cursor=cursor, table_name=internal_table.table_name
-                        )
-                    )
-                )
-            )
-        )
-
-        column_names = [
-            column.name for column in internal_table.columns
-        ] + metadata_columns
-        insert_query = (
-            f"INSERT INTO {internal_table.table_name}\n"
-            f"SELECT {', '.join(column_names)}\n"
-            f"FROM {external_table_name}\n"
-        )
-        if where_sql is not None:
-            insert_query += f"WHERE {where_sql}"
-
-        cursor.execute(query=insert_query)
-
-    def insert_incremental_overwrite(
-        self,
-        internal_table: Table,
-        external_table_name: str,
-        where_sql: Optional[str] = None,
-    ) -> None:
-        """
-        Perform an incremental overwrite from an external table into an internal table.
-
-        The internal table must be partitioned by:
-         - source_file_name
-         - source_file_timestamp
-
-        Args:
-            internal_table: (destination) The internal table which will be overwritten.
-            external_table_name: (source) The external table from which to load.
-            where_sql: (Optional) A where clause, for filtering data.
-                Do not include the "WHERE" keyword.
-                If no clause is provided (default), the entire external table is loaded.
-        """
-
-        cursor = self.connection.cursor()
-
-        # verify the internal table is partitioned by source file name & timestamp
-        if not set(c.name for c in FILE_METADATA_COLUMNS).issubset(
-            set(
-                get_table_partition_columns(
-                    cursor=cursor, table_name=internal_table.table_name
-                )
-            )
-        ):
-            raise RuntimeError(
-                f"Internal table {internal_table.table_name} must be partitioned "
-                f"by source_file_name and source_file_timestamp."
-            )
-
-        for part_key in get_partition_keys(
-            cursor=cursor, table_name=internal_table.table_name, where_sql=where_sql
-        ):
-            cursor.execute(
-                f"ALTER TABLE {internal_table.table_name} DROP PARTITION {part_key}"
-            )
-
-        self._insert(
-            internal_table=internal_table,
-            external_table_name=external_table_name,
-            where_sql=where_sql,
-        )
