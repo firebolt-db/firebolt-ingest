@@ -1,9 +1,15 @@
+from pytest import fixture
 from pytest_mock import MockerFixture
 
-from firebolt_ingest.table_utils import get_table_schema
+from firebolt_ingest.table_utils import drop_table, get_table_schema
 
 
-def test_get_table_schema(mocker: MockerFixture):
+@fixture
+def table_name() -> str:
+    return "my_table"
+
+
+def test_get_table_schema(mocker: MockerFixture, table_name: str):
     create_statement = "CREATE my_table ..."
 
     cursor = mocker.MagicMock()
@@ -15,8 +21,18 @@ def test_get_table_schema(mocker: MockerFixture):
     cursor.description = [table_name_column, schema_column]
 
     cursor.execute.return_value = ["CREATE TABLE mock"]
-    cursor.fetchall.return_value = [("my_table", create_statement)]
-    assert get_table_schema(cursor=cursor, table_name="my_table") == create_statement
+    cursor.fetchall.return_value = [(table_name, create_statement)]
+    assert get_table_schema(cursor=cursor, table_name=table_name) == create_statement
 
     cursor.execute.assert_called_once_with("SHOW TABLES")
     cursor.fetchall.assert_called_once()
+
+
+def test_drop_table(mocker: MockerFixture, table_name: str):
+    cursor = mocker.MagicMock()
+    mocker.patch("firebolt_ingest.table_utils.does_table_exist", return_value=False)
+    drop_table(cursor=cursor, table_name=table_name)
+
+    cursor.execute.assert_called_once_with(
+        query=f"DROP TABLE IF EXISTS {table_name} CASCADE"
+    )
