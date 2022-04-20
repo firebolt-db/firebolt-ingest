@@ -41,7 +41,7 @@ class AWSSettings(BaseSettings):
 
 def generate_aws_credentials_string(creds: AWSCredentials) -> Tuple[str, List[str]]:
     """
-        prepares sql statement for passing the AWS credentials
+        Prepares sql statement for passing the AWS credentials
 
     Args:
         creds: valid aws credentials

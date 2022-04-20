@@ -7,15 +7,12 @@ from firebolt.common.exception import FireboltError
 
 def table_must_exist(func):
     @wraps(func)
-    def with_table_existence_check(*args, **kwargs):
-        if not does_table_exist(
-            cursor=kwargs["cursor"], table_name=kwargs["table_name"]
-        ):
+    def with_table_existence_check(cursor: Cursor, table_name: str, **kwargs):
+        if not does_table_exist(cursor=cursor, table_name=table_name):
             raise FireboltError(
-                f"Table {kwargs['table_name']} does not exist "
-                f"when calling {func.__name__}"
+                f"Table {table_name} does not exist " f"when calling {func.__name__}"
             )
-        return func(*args, **kwargs)
+        return func(cursor=cursor, table_name=table_name, **kwargs)
 
     return with_table_existence_check
 
@@ -148,7 +145,7 @@ def get_partition_keys(
 def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     """
     Check whether table with table_name exists,
-    and return True if it exists, False otherwise
+    and return True if it exists, False otherwise.
     """
     find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
 

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from firebolt_ingest.model.table import Column, DatetimePart, Partition, Table
+from firebolt_ingest.table_model import Column, DatetimePart, Partition, Table
 
 
 def prune_nested_dict(d):

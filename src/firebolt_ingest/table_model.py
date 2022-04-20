@@ -1,9 +1,28 @@
 from enum import Enum
-from typing import List, Literal, Optional, Tuple
+from typing import Any, List, Literal, Optional, Protocol, Tuple
 
+import yaml
 from pydantic import BaseModel, Field, ValidationError, conlist, root_validator
+from pydantic.main import ModelMetaclass
+from yaml import Loader
 
-from firebolt_ingest.model import YamlModelMixin
+
+class BaseModelProtocol(Protocol):
+    @classmethod
+    def parse_obj(self, obj: Any) -> Any:
+        ...
+
+
+class YamlModelMixin(metaclass=ModelMetaclass):
+    """
+    Provides a parse_yaml method to a Pydantic model class.
+    """
+
+    @classmethod
+    def parse_yaml(cls: BaseModelProtocol, yaml_obj: Any):
+        obj = yaml.load(yaml_obj, Loader=Loader)
+        return cls.parse_obj(obj)
+
 
 # see: https://docs.firebolt.io/general-reference/data-types.html
 ATOMIC_TYPES = {

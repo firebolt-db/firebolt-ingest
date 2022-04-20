@@ -4,7 +4,7 @@ from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import Table
+from firebolt_ingest.table_model import Table
 from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,
@@ -15,13 +15,13 @@ EXTERNAL_TABLE_PREFIX = "ex_"
 
 
 class TableService:
-    """ """
-
     def __init__(self, connection: Connection):
         """
+        Table service class used for creation of external/internal tables and
+        performing ingestion from external into internal table
 
         Args:
-            connection:
+            connection: a connection to some database/engine
         """
         self.connection = connection
 
