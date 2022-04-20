@@ -15,13 +15,13 @@ EXTERNAL_TABLE_PREFIX = "ex_"
 
 
 class TableService:
-    """ """
-
     def __init__(self, connection: Connection):
         """
+        Table service class used for creation of external/internal tables and
+        performing ingestion from external into internal table
 
         Args:
-            connection:
+            connection: a connection to some database/engine
         """
         self.connection = connection
 

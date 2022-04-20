@@ -145,7 +145,7 @@ def get_partition_keys(
 def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     """
     Check whether table with table_name exists,
-    and return True if it exists, False otherwise
+    and return True if it exists, False otherwise.
     """
     find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
 
