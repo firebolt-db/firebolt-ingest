@@ -4,7 +4,7 @@ from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.model.table import Table
+from firebolt_ingest.table_model import Table
 from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,

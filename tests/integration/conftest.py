@@ -4,7 +4,7 @@ from os import environ
 from firebolt.db.connection import connect
 from pytest import fixture
 
-from firebolt_ingest.model.table import Column, Table
+from firebolt_ingest.table_model import Column, Table
 
 LOGGER = getLogger(__name__)
 

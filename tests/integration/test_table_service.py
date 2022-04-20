@@ -5,8 +5,8 @@ from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
 
 from firebolt_ingest.aws_settings import AWSSettings
-from firebolt_ingest.model.table import Column, Table
-from firebolt_ingest.service.table import TableService
+from firebolt_ingest.table_model import Column, Table
+from firebolt_ingest.table_service import TableService
 
 
 def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):

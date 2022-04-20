@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from firebolt_ingest.aws_settings import AWSSettings
-from firebolt_ingest.model.table import Table
-from firebolt_ingest.service.table import TableService
+from firebolt_ingest.table_model import Table
+from firebolt_ingest.table_service import TableService
 
 
 def test_create_external_table_happy_path(
@@ -124,12 +124,12 @@ def test_insert_full_overwrite(
     connection.cursor.return_value = cursor_mock
 
     get_table_schema_mock = mocker.patch(
-        "firebolt_ingest.service.table.get_table_schema"
+        "firebolt_ingest.table_service.get_table_schema"
     )
     get_table_schema_mock.return_value = "create_fact_table_request"
 
     get_table_columns_mock = mocker.patch(
-        "firebolt_ingest.service.table.get_table_columns"
+        "firebolt_ingest.table_service.get_table_columns"
     )
     get_table_columns_mock.return_value = ["id", "name"]
 
