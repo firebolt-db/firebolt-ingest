@@ -32,12 +32,13 @@ jobs:
 
       - name: Setup database and engine
         id: setup
-        uses: firebolt-db/integration-testing-setup@master
+        uses: firebolt-db/integration-testing-setup@add-instance-type-parameter
         with:
           firebolt-username: ${{ secrets.FIREBOLT_USERNAME }}
           firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
           api-endpoint: "api.dev.firebolt.io"
           region: "us-east-1"
+          instance-type: "B1"
           db_suffix: ${{ format('{0}_{1}', matrix.os, matrix.python-version) }}
 
       - name: Run integration tests
