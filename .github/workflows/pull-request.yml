@@ -1,6 +1,7 @@
 name: Pull request
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [ main ]
 
@@ -16,10 +17,11 @@ jobs:
     uses: ./.github/workflows/code-check.yml
   unit-tests:
     uses: ./.github/workflows/unit-tests.yml
-#  security-scan:
-#    needs: [unit-tests]
-#    uses: ./.github/workflows/security-scan.yml
-#    secrets:
-#      FOSSA_TOKEN: ${{ secrets.FOSSA_TOKEN }}
-#      SONARCLOUD_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+
+  security-scan:
+    needs: [unit-tests]
+    uses: ./.github/workflows/security-scan.yml
+    secrets:
+      FOSSA_TOKEN: ${{ secrets.FOSSA_TOKEN }}
+      SONARCLOUD_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
 
