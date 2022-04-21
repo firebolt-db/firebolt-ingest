@@ -1,16 +1,10 @@
 from enum import Enum
-from typing import Any, List, Literal, Optional, Protocol, Tuple
+from typing import Any, List, Optional, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, conlist, root_validator
 from pydantic.main import ModelMetaclass
 from yaml import Loader
-
-
-class BaseModelProtocol(Protocol):
-    @classmethod
-    def parse_obj(self, obj: Any) -> Any:
-        ...
 
 
 class YamlModelMixin(metaclass=ModelMetaclass):
@@ -19,9 +13,9 @@ class YamlModelMixin(metaclass=ModelMetaclass):
     """
 
     @classmethod
-    def parse_yaml(cls: BaseModelProtocol, yaml_obj: Any):
+    def parse_yaml(cls, yaml_obj: Any):
         obj = yaml.load(yaml_obj, Loader=Loader)
-        return cls.parse_obj(obj)
+        return cls.parse_obj(obj)  # type: ignore
 
 
 # see: https://docs.firebolt.io/general-reference/data-types.html
@@ -115,11 +109,39 @@ class Table(BaseModel, YamlModelMixin):
     columns: conlist(Column, min_items=1)  # type: ignore
     primary_index: conlist(str, min_items=1)  # type: ignore
     partitions: List[Partition] = []
-    file_type: Literal["CSV", "JSON", "ORC", "PARQUET", "TCV"]
+    file_type: str
     object_pattern: conlist(str, min_items=1)  # type: ignore
-    compression: Optional[Literal["GZIP"]] = None
+    compression: Optional[str] = None
     csv_skip_header_row: Optional[bool] = None
     json_parse_as_text: Optional[bool] = None
+
+    @root_validator
+    def compression_validator(cls, values: dict) -> dict:
+        """
+        Check whether compression has one of allowed values: {"GZIP"}
+        """
+        if values.get("compression") is None:
+            return values
+
+        values["compression"] = values["compression"].upper()
+
+        if values.get("compression") not in {"GZIP"}:
+            raise ValidationError(["unknown compression"], type(cls))
+
+        return values
+
+    @root_validator
+    def file_type_validator(cls, values: dict) -> dict:
+        """
+        Check whether file_type has one of allowed values:
+            {"CSV", "JSON", "ORC", "PARQUET", "TCV"}
+        """
+        values["file_type"] = values["file_type"].upper()
+
+        if values.get("file_type") not in {"CSV", "JSON", "ORC", "PARQUET", "TCV"}:
+            raise ValidationError(["unknown file type"], type(cls))
+
+        return values
 
     @root_validator
     def file_type_additional_fields(cls, values: dict) -> dict:
