@@ -10,7 +10,7 @@ And ingest the data from one to another.
 The library is based on firebolt-python-sdk.
 
 ### Prerequisites
-* Python version 3.8 or later along with the pip package installer. For more information, see the [Python](https://www.python.org/downloads/) web page.
+* Python version 3.7 or later along with the pip package installer. For more information, see the [Python](https://www.python.org/downloads/) web page.
 * Firebolt account, database and running engine.
 
 ### Installation
