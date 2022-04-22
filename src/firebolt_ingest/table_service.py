@@ -1,4 +1,5 @@
 from firebolt.async_db.connection import Connection
+from firebolt.common.exception import FireboltError
 
 from firebolt_ingest.aws_settings import (
     AWSSettings,
@@ -6,9 +7,11 @@ from firebolt_ingest.aws_settings import (
 )
 from firebolt_ingest.table_model import Table
 from firebolt_ingest.table_utils import (
+    does_table_exist,
     drop_table,
     get_table_columns,
     get_table_schema,
+    verify_ingestion_rowcount,
 )
 
 EXTERNAL_TABLE_PREFIX = "ex_"
@@ -111,6 +114,8 @@ class TableService:
         """
         cursor = self.connection.cursor()
 
+        # TODO: check internal and external tables exist
+
         # get table schema
         internal_table_schema = get_table_schema(cursor, internal_table_name)
 
@@ -132,3 +137,65 @@ class TableService:
             cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
 
         cursor.execute(query=insert_query)
+
+    def insert_incremental_append(
+        self,
+        internal_table_name: str,
+        external_table_name: str,
+        firebolt_dont_wait_for_upload_to_s3: bool = False,
+    ) -> None:
+        """
+        Insert from the external table only new files,
+        that aren't in the internal table.
+
+        Requires internal table to have file-metadata columns
+        (source_file_name and source_file_timestamp)
+
+        Args:
+            internal_table_name: (destination) The internal table
+                                 where the data will be appended.
+            external_table_name: (source) The external table from which to load.
+
+            firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
+                wait until the changes will be written to s3.
+        Returns:
+
+        """
+        cursor = self.connection.cursor()
+
+        if not does_table_exist(cursor, internal_table_name):
+            raise FireboltError(f"Fact table {internal_table_name} doesn't exist")
+        if not does_table_exist(cursor, external_table_name):
+            raise FireboltError(f"External table {external_table_name} doesn't exist")
+
+        insert_query = f"""
+                       INSERT INTO {internal_table_name}
+                       SELECT *, source_file_name, source_file_timestamp
+                       FROM {external_table_name}
+                       WHERE(source_file_name, source_file_timestamp)
+                       NOT IN (
+                            SELECT DISTINCT source_file_name,
+                                            source_file_timestamp
+                            FROM {internal_table_name})
+                       """
+
+        if firebolt_dont_wait_for_upload_to_s3:
+            cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
+
+        cursor.execute(query=insert_query)
+
+    def verify_ingestion(
+        self, internal_table_name: str, external_table_name: str
+    ) -> bool:
+        """
+        verify ingestion by running a sequence of verification, currently implemented:
+        - verification by rowcount
+
+        Args:
+            internal_table_name: Name of the fact table
+            external_table_name: Name of the external table
+        """
+
+        return verify_ingestion_rowcount(
+            self.connection.cursor(), internal_table_name, external_table_name
+        )

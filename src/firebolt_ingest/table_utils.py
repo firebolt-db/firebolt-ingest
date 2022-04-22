@@ -142,6 +142,35 @@ def get_partition_keys(
     return cursor.fetchall()  # type: ignore
 
 
+def verify_ingestion_rowcount(
+    cursor: Cursor, internal_table_name: str, external_table_name: str
+) -> bool:
+    """
+    Verify, that the fact and external table have the same number of rows
+
+    Note: doesn't check for existence of the fact and external tables,
+    hence not safe for external usage. Could lead to sql-injection
+
+    Args:
+        cursor: Firebolt database cursor
+        internal_table_name: name of the fact table
+        external_table_name: name of the external table
+
+    Returns: true if the number of rows the same
+    """
+    cursor.execute(
+        query=f"SELECT "
+        f"(SELECT count(*) from {internal_table_name}) AS rc_fact, "
+        f"(SELECT count(*) FROM {external_table_name}) as rc_external"
+    )
+
+    data = cursor.fetchall()
+    if data is None:
+        return False
+
+    return data[0][0] == data[0][1]  # type: ignore
+
+
 def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     """
     Check whether table with table_name exists,
