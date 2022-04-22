@@ -11,6 +11,7 @@ from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,
     get_table_schema,
+    verify_ingestion_file_names,
     verify_ingestion_rowcount,
 )
 
@@ -196,6 +197,7 @@ class TableService:
             external_table_name: Name of the external table
         """
 
+        cursor = self.connection.cursor()
         return verify_ingestion_rowcount(
-            self.connection.cursor(), internal_table_name, external_table_name
-        )
+            cursor, internal_table_name, external_table_name
+        ) and verify_ingestion_file_names(cursor, internal_table_name)

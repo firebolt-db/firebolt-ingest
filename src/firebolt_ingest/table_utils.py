@@ -4,6 +4,8 @@ from typing import Any, List, Optional, Sequence
 from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
 
+from firebolt_ingest.table_model import FILE_METADATA_COLUMNS
+
 
 def table_must_exist(func):
     @wraps(func)
@@ -169,6 +171,31 @@ def verify_ingestion_rowcount(
         return False
 
     return data[0][0] == data[0][1]  # type: ignore
+
+
+def verify_ingestion_file_names(cursor: Cursor, internal_table_name: str) -> bool:
+    """
+    Verify ingestion using the metadata. If we have entries with the same
+    source_file_name and different source_file_timestamp we might have duplicates
+    """
+
+    table_columns = get_table_columns(cursor, internal_table_name)
+
+    # if the metadata is missing return True,
+    # since it is not possible to do the validation
+    if not {column.name for column in FILE_METADATA_COLUMNS}.issubset(table_columns):
+        return True
+
+    cursor.execute(
+        query=f"""
+                SELECT source_file_name FROM {internal_table_name}
+                GROUP BY source_file_name
+                HAVING count(DISTINCT source_file_timestamp) <> 1
+                """
+    )
+
+    # if the table is correct, the number of fetched rows should be zero
+    return len(cursor.fetchall()) == 0  # type: ignore
 
 
 def does_table_exist(cursor: Cursor, table_name: str) -> bool:
