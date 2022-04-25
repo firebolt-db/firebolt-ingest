@@ -1,5 +1,5 @@
-from firebolt.async_db.connection import Connection
 from firebolt.common.exception import FireboltError
+from firebolt.db.connection import Connection
 
 from firebolt_ingest.aws_settings import (
     AWSSettings,
