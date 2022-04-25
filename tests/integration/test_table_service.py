@@ -11,6 +11,13 @@ from firebolt_ingest.table_utils import drop_table
 
 
 def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
+    def normalize_type(t: str) -> str:
+        t = t.upper()
+        if t == "TEXT":
+            return "STRING"
+
+        return t
+
     cursor.execute(
         "SELECT column_name, data_type "
         "FROM INFORMATION_SCHEMA.columns "
@@ -18,7 +25,7 @@ def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
         [table_name],
     )
     data = cursor.fetchall()
-    columns_plain = [[column.name, column.type] for column in columns]
+    columns_plain = [[column.name, normalize_type(column.type)] for column in columns]
 
     assert sorted(data, key=lambda x: x[0]) == sorted(
         columns_plain, key=lambda x: x[0]
