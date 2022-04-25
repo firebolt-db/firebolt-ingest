@@ -7,6 +7,7 @@ from firebolt.db import Cursor
 from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.table_model import Column, Table
 from firebolt_ingest.table_service import TableService
+from firebolt_ingest.table_utils import drop_table
 
 
 def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
@@ -34,7 +35,7 @@ def test_create_internal_table(connection, mock_table: Table):
     cursor = connection.cursor()
     check_columns(cursor, mock_table.table_name, mock_table.columns)
 
-    cursor.execute(f"DROP TABLE {mock_table.table_name}")
+    drop_table(connection.cursor(), mock_table.table_name)
 
 
 def test_create_internal_table_with_meta(connection, mock_table: Table):
@@ -55,7 +56,7 @@ def test_create_internal_table_with_meta(connection, mock_table: Table):
         ],
     )
 
-    cursor.execute(f"DROP TABLE {mock_table.table_name}")
+    drop_table(connection.cursor(), mock_table.table_name)
 
 
 def test_create_internal_table_twice(connection, mock_table: Table):
@@ -69,7 +70,7 @@ def test_create_internal_table_twice(connection, mock_table: Table):
     with pytest.raises(FireboltError):
         ts.create_internal_table(table=mock_table)
 
-    connection.cursor().execute(f"DROP TABLE {mock_table.table_name}")
+    drop_table(connection.cursor(), mock_table.table_name)
 
 
 def test_create_external_table(connection):
@@ -95,10 +96,8 @@ def test_create_external_table(connection):
         aws_settings=AWSSettings(s3_url=s3_url),
     )
 
-    cursor = connection.cursor()
-    check_columns(cursor, f"ex_{table_name}", columns)
-
-    cursor.execute(f"DROP TABLE ex_{table_name}")
+    check_columns(connection.cursor(), f"ex_{table_name}", columns)
+    drop_table(connection.cursor(), f"ex_{table_name}")
 
 
 def test_create_external_table_twice(connection):
@@ -127,25 +126,7 @@ def test_create_external_table_twice(connection):
     with pytest.raises(FireboltError):
         ts.create_external_table(table, aws_settings)
 
-    connection.cursor().execute(f"DROP TABLE ex_{table_name}")
-
-
-def validate_ingestion(
-    cursor: Cursor, internal_table_name: str, external_table_name: str
-):
-    """validate, that the number of rows
-    in the external and internal tables the same
-    """
-    cursor.execute(
-        f"SELECT "
-        f"(SELECT count(*) FROM {internal_table_name}) =="
-        f"(SELECT count(*) FROM {external_table_name})"
-    )
-    data = cursor.fetchall()
-
-    assert (
-        data[0][0] == 1
-    ), "Number of rows  in the external and internal tables are not equal"
+    drop_table(connection.cursor(), f"ex_{table.table_name}")
 
 
 def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
@@ -163,10 +144,10 @@ def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
         firebolt_dont_wait_for_upload_to_s3=True,
     )
 
-    cursor = connection.cursor()
-    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
-    cursor.execute(f"DROP TABLE {mock_table.table_name}")
-    cursor.execute(f"DROP TABLE ex_{mock_table.table_name}")
+    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
+
+    drop_table(connection.cursor(), mock_table.table_name)
+    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
 
 def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connection):
@@ -175,7 +156,7 @@ def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connecti
     validating the ingestion after each overwrite
     """
     ts = TableService(connection)
-    cursor = connection.cursor()
+    connection.cursor()
 
     ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
     ts.create_internal_table(mock_table)
@@ -185,17 +166,17 @@ def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connecti
         external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
-    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
+    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
 
     ts.insert_full_overwrite(
         internal_table_name=mock_table.table_name,
         external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
-    validate_ingestion(cursor, f"ex_{mock_table.table_name}", mock_table.table_name)
+    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
 
-    cursor.execute(f"DROP TABLE {mock_table.table_name}")
-    cursor.execute(f"DROP TABLE ex_{mock_table.table_name}")
+    drop_table(connection.cursor(), mock_table.table_name)
+    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
 
 def test_ingestion_incompatible_schema(mock_table: Table, s3_url: str, connection):
@@ -215,4 +196,52 @@ def test_ingestion_incompatible_schema(mock_table: Table, s3_url: str, connectio
             firebolt_dont_wait_for_upload_to_s3=True,
         )
 
-    connection.cursor().execute(f"DROP TABLE ex_{mock_table.table_name}")
+    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
+
+
+def test_ingestion_append(mock_table: Table, s3_url: str, connection):
+    """
+    Do incremental append, when the internal table is empty,
+    the result should be the same as in full overwrite
+    """
+    ts = TableService(connection)
+
+    connection.cursor()
+
+    int_table_name = mock_table.table_name
+    ext_table_name = f"ex_{mock_table.table_name}"
+    ts.create_internal_table(mock_table)
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    # Create a partial sub table
+    mock_table.table_name = "sub_lineitem"
+    mock_table.object_pattern = ["*1.parquet"]
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    # First append from small table
+    ts.insert_incremental_append(
+        internal_table_name=int_table_name,
+        external_table_name=f"ex_sub_lineitem",
+        firebolt_dont_wait_for_upload_to_s3=True,
+    )
+    assert ts.verify_ingestion(int_table_name, f"ex_sub_lineitem")
+
+    # Second append from full table
+    ts.insert_incremental_append(
+        internal_table_name=int_table_name,
+        external_table_name=ext_table_name,
+        firebolt_dont_wait_for_upload_to_s3=True,
+    )
+    assert ts.verify_ingestion(int_table_name, ext_table_name)
+
+    # Try to append from the small table again
+    ts.insert_incremental_append(
+        internal_table_name=int_table_name,
+        external_table_name=f"ex_sub_lineitem",
+        firebolt_dont_wait_for_upload_to_s3=True,
+    )
+    assert ts.verify_ingestion(int_table_name, ext_table_name)
+
+    # drop all test tables
+    for table_name in [int_table_name, ext_table_name, "ex_sub_lineitem"]:
+        drop_table(connection.cursor(), table_name)

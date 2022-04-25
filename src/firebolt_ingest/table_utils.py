@@ -4,6 +4,9 @@ from typing import Any, List, Optional, Sequence
 from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
 
+from firebolt_ingest.table_model import FILE_METADATA_COLUMNS
+from firebolt_ingest.utils import format_query
+
 
 def table_must_exist(func):
     @wraps(func)
@@ -71,7 +74,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     drop_query = f"DROP TABLE IF EXISTS {table_name} CASCADE"
 
     # drop the table
-    cursor.execute(query=drop_query)
+    cursor.execute(query=format_query(drop_query))
 
     # verify that the drop succeeded
     if does_table_exist(cursor, table_name):
@@ -100,7 +103,7 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
         cursor: Firebolt database cursor
         table_name: Name of the table.
     """
-    sql = """
+    query = """
     SELECT column_name
     FROM information_schema.columns
     WHERE
@@ -108,7 +111,10 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
         table_name = ? AND
         is_in_partition_expr = 'YES'
     """
-    cursor.execute(query=sql, parameters=(cursor.connection.database, table_name))
+
+    cursor.execute(
+        query=format_query(query), parameters=(cursor.connection.database, table_name)
+    )
     return cursor.fetchall()  # type: ignore
 
 
@@ -131,15 +137,69 @@ def get_partition_keys(
     part_expr = ",".join(
         get_table_partition_columns(cursor=cursor, table_name=table_name)
     )
-    sql = f"""
+    query = f"""
     SELECT DISTINCT {part_expr}
     FROM {table_name}
     """
     if where_sql is not None:
-        sql += f"WHERE {where_sql}"
+        query += f"WHERE {where_sql}"
 
-    cursor.execute(sql)
+    cursor.execute(format_query(query))
     return cursor.fetchall()  # type: ignore
+
+
+def verify_ingestion_rowcount(
+    cursor: Cursor, internal_table_name: str, external_table_name: str
+) -> bool:
+    """
+    Verify, that the fact and external table have the same number of rows
+
+    Note: doesn't check for existence of the fact and external tables,
+    hence not safe for external usage. Could lead to sql-injection
+
+    Args:
+        cursor: Firebolt database cursor
+        internal_table_name: name of the fact table
+        external_table_name: name of the external table
+
+    Returns: true if the number of rows the same
+    """
+    query = f"""
+    SELECT
+        (SELECT count(*) FROM {internal_table_name}) AS rc_fact,
+        (SELECT count(*) FROM {external_table_name}) AS rc_external
+    """
+    cursor.execute(query=format_query(query))
+
+    data = cursor.fetchall()
+    if data is None:
+        return False
+
+    return data[0][0] == data[0][1]  # type: ignore
+
+
+def verify_ingestion_file_names(cursor: Cursor, internal_table_name: str) -> bool:
+    """
+    Verify ingestion using the metadata. If we have entries with the same
+    source_file_name and different source_file_timestamp we might have duplicates
+    """
+
+    table_columns = get_table_columns(cursor, internal_table_name)
+
+    # if the metadata is missing return True,
+    # since it is not possible to do the validation
+    if not {column.name for column in FILE_METADATA_COLUMNS}.issubset(table_columns):
+        return True
+
+    query = f"""
+    SELECT source_file_name FROM {internal_table_name}
+    GROUP BY source_file_name
+    HAVING count(DISTINCT source_file_timestamp) <> 1
+    """
+    cursor.execute(query=format_query(query))
+
+    # if the table is correct, the number of fetched rows should be zero
+    return len(cursor.fetchall()) == 0  # type: ignore
 
 
 def does_table_exist(cursor: Cursor, table_name: str) -> bool:
