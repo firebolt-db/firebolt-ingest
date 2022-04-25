@@ -164,9 +164,7 @@ def test_insert_full_overwrite(
     get_table_columns_mock.assert_called_once()
 
 
-def test_insert_incremental_append(
-    mock_aws_settings: AWSSettings, mocker: MockerFixture, mock_table: Table
-):
+def test_insert_incremental_append(mocker: MockerFixture):
     """
     Happy path of insert incremental append
     """
@@ -200,3 +198,32 @@ def test_insert_incremental_append(
 
     does_table_exists_mock.assert_any_call(cursor_mock, "external_table_name")
     does_table_exists_mock.assert_any_call(cursor_mock, "internal_table_name")
+
+
+def test_verify_ingestion(mocker: MockerFixture):
+    """
+    Test, that verify ingestion calls all required checks
+    """
+
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    verify_ingestion_rowcount_mock = mocker.patch(
+        "firebolt_ingest.table_service.verify_ingestion_rowcount", return_value=True
+    )
+
+    verify_ingestion_file_names_mock = mocker.patch(
+        "firebolt_ingest.table_service.verify_ingestion_file_names", return_value=True
+    )
+
+    ts = TableService(connection)
+    assert ts.verify_ingestion(
+        internal_table_name="internal_table_name",
+        external_table_name="external_table_name",
+    )
+
+    verify_ingestion_rowcount_mock.assert_any_call(
+        cursor_mock, "internal_table_name", "external_table_name"
+    )
+    verify_ingestion_file_names_mock.assert_any_call(cursor_mock, "internal_table_name")
