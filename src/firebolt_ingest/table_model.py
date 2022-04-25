@@ -285,20 +285,12 @@ class Table(BaseModel, YamlModelMixin):
         """
         return ", ".join([index for index in self.primary_index])
 
-    def generate_partitions_string(self, add_file_metadata: bool) -> str:
+    def generate_partitions_string(self) -> str:
         """
         Generate a prepared sql string from list of partition columns to
         be used in the creation of internal partitioned tables.
 
         Args:
-            add_file_metadata: If true, add the source_file_name and
             source_file_timestamp columns as partition columns.
         """
-        additional_partitions = (
-            [Partition(column_name=c.name) for c in FILE_METADATA_COLUMNS]
-            if add_file_metadata
-            else []
-        )
-        return ",".join(
-            [p.as_sql_string() for p in self.partitions + additional_partitions]
-        )
+        return ",".join([p.as_sql_string() for p in self.partitions])

@@ -5,6 +5,7 @@ from pytest_mock import MockerFixture
 from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.table_model import Table
 from firebolt_ingest.table_service import TableService
+from firebolt_ingest.utils import format_query
 
 
 def test_create_external_table_happy_path(
@@ -23,13 +24,15 @@ def test_create_external_table_happy_path(
     ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE ex_table_name\n"
-        "(id INT, name TEXT)\n"
-        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
-        "URL = ?\n"
-        "OBJECT_PATTERN = ?, ?\n"
-        "TYPE = (PARQUET)\n"
-        "COMPRESSION = GZIP\n",
+        format_query(
+            """CREATE EXTERNAL TABLE ex_table_name
+                        (id INT, name TEXT)
+                        CREDENTIALS = (AWS_ROLE_ARN = ?)
+                        URL = ?
+                        OBJECT_PATTERN = ?, ?
+                        TYPE = (PARQUET)
+                        COMPRESSION = GZIP"""
+        ),
         ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
     )
 
@@ -50,12 +53,14 @@ def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: 
     ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE ex_table_name\n"
-        "(id INT, name TEXT)\n"
-        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
-        "URL = ?\n"
-        "OBJECT_PATTERN = ?, ?\n"
-        "TYPE = (JSON PARSE_AS_TEXT = 'TRUE')\n",
+        format_query(
+            """CREATE EXTERNAL TABLE ex_table_name
+                        (id INT, name TEXT)
+                        CREDENTIALS = (AWS_ROLE_ARN = ?)
+                        URL = ?
+                        OBJECT_PATTERN = ?, ?
+                        TYPE = (JSON PARSE_AS_TEXT = 'TRUE')"""
+        ),
         ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
     )
 
@@ -76,12 +81,14 @@ def test_create_external_table_csv(mock_aws_settings: AWSSettings, mock_table: T
     ts.create_external_table(mock_table, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE EXTERNAL TABLE ex_table_name\n"
-        "(id INT, name TEXT)\n"
-        "CREDENTIALS = (AWS_ROLE_ARN = ?)\n"
-        "URL = ?\n"
-        "OBJECT_PATTERN = ?, ?\n"
-        "TYPE = (CSV SKIP_HEADER_ROWS = 0)\n",
+        format_query(
+            """CREATE EXTERNAL TABLE ex_table_name
+                        (id INT, name TEXT)
+                        CREDENTIALS = (AWS_ROLE_ARN = ?)
+                        URL = ?
+                        OBJECT_PATTERN = ?, ?
+                        TYPE = (CSV SKIP_HEADER_ROWS = 0)"""
+        ),
         ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
     )
 
@@ -101,12 +108,13 @@ def test_create_internal_table_happy_path(
     ts.create_internal_table(mock_table_partitioned, mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
-        "CREATE FACT TABLE table_name\n"
-        "(id INT, user STRING, birthdate DATE, "
-        "source_file_name STRING, source_file_timestamp DATETIME)\n"
-        "PRIMARY INDEX id\n"
-        "PARTITION BY user,EXTRACT(DAY FROM birthdate),"
-        "source_file_name,source_file_timestamp\n",
+        format_query(
+            """CREATE FACT TABLE table_name
+                        (id INT, user STRING, birthdate DATE,
+                        source_file_name STRING, source_file_timestamp DATETIME)
+                        PRIMARY INDEX id
+                        PARTITION BY user,EXTRACT(DAY FROM birthdate)"""
+        ),
         [],
     )
 
@@ -145,9 +153,11 @@ def test_insert_full_overwrite(
         query="DROP TABLE IF EXISTS internal_table_name CASCADE"
     )
     cursor_mock.execute.assert_any_call(
-        query="INSERT INTO internal_table_name\n"
-        "SELECT id, name\n"
-        "FROM external_table_name\n"
+        query=format_query(
+            """INSERT INTO internal_table_name
+               SELECT id, name
+               FROM external_table_name"""
+        )
     )
 
     get_table_schema_mock.assert_called_once()

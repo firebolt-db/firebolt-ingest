@@ -5,6 +5,7 @@ from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
 
 from firebolt_ingest.table_model import FILE_METADATA_COLUMNS
+from firebolt_ingest.utils import format_query
 
 
 def table_must_exist(func):
@@ -73,7 +74,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     drop_query = f"DROP TABLE IF EXISTS {table_name} CASCADE"
 
     # drop the table
-    cursor.execute(query=drop_query)
+    cursor.execute(query=format_query(drop_query))
 
     # verify that the drop succeeded
     if does_table_exist(cursor, table_name):
@@ -102,7 +103,7 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
         cursor: Firebolt database cursor
         table_name: Name of the table.
     """
-    sql = """
+    query = """
     SELECT column_name
     FROM information_schema.columns
     WHERE
@@ -110,7 +111,10 @@ def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
         table_name = ? AND
         is_in_partition_expr = 'YES'
     """
-    cursor.execute(query=sql, parameters=(cursor.connection.database, table_name))
+
+    cursor.execute(
+        query=format_query(query), parameters=(cursor.connection.database, table_name)
+    )
     return cursor.fetchall()  # type: ignore
 
 
@@ -133,14 +137,14 @@ def get_partition_keys(
     part_expr = ",".join(
         get_table_partition_columns(cursor=cursor, table_name=table_name)
     )
-    sql = f"""
+    query = f"""
     SELECT DISTINCT {part_expr}
     FROM {table_name}
     """
     if where_sql is not None:
-        sql += f"WHERE {where_sql}"
+        query += f"WHERE {where_sql}"
 
-    cursor.execute(sql)
+    cursor.execute(format_query(query))
     return cursor.fetchall()  # type: ignore
 
 
@@ -160,11 +164,12 @@ def verify_ingestion_rowcount(
 
     Returns: true if the number of rows the same
     """
-    cursor.execute(
-        query=f"SELECT "
-        f"(SELECT count(*) from {internal_table_name}) AS rc_fact, "
-        f"(SELECT count(*) FROM {external_table_name}) as rc_external"
-    )
+    query = f"""
+    SELECT
+        (SELECT count(*) FROM {internal_table_name}) AS rc_fact,
+        (SELECT count(*) FROM {external_table_name}) AS rc_external
+    """
+    cursor.execute(query=format_query(query))
 
     data = cursor.fetchall()
     if data is None:
@@ -186,13 +191,12 @@ def verify_ingestion_file_names(cursor: Cursor, internal_table_name: str) -> boo
     if not {column.name for column in FILE_METADATA_COLUMNS}.issubset(table_columns):
         return True
 
-    cursor.execute(
-        query=f"""
-                SELECT source_file_name FROM {internal_table_name}
-                GROUP BY source_file_name
-                HAVING count(DISTINCT source_file_timestamp) <> 1
-                """
-    )
+    query = f"""
+    SELECT source_file_name FROM {internal_table_name}
+    GROUP BY source_file_name
+    HAVING count(DISTINCT source_file_timestamp) <> 1
+    """
+    cursor.execute(query=format_query(query))
 
     # if the table is correct, the number of fetched rows should be zero
     return len(cursor.fetchall()) == 0  # type: ignore

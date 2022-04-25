@@ -1,5 +1,7 @@
+from typing import Sequence
 from unittest.mock import MagicMock
 
+import pytest
 from pytest import fixture
 from pytest_mock import MockerFixture
 
@@ -8,7 +10,10 @@ from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,
     get_table_schema,
+    verify_ingestion_file_names,
+    verify_ingestion_rowcount,
 )
+from firebolt_ingest.utils import format_query
 
 
 @fixture
@@ -65,3 +70,90 @@ def test_does_table_exist(table_name: str, cursor: MagicMock):
     cursor.execute.assert_called_once_with(
         f"SELECT * FROM information_schema.tables WHERE table_name = ?", [table_name]
     )
+
+
+def test_verify_ingestion_rowcount(cursor: MagicMock):
+    """
+    Test happy path of verify ingestion rowcount function
+    """
+    cursor.fetchall.return_value = [[100, 100]]
+
+    assert verify_ingestion_rowcount(
+        cursor, "internal_table_name", "external_table_name"
+    )
+
+    cursor.execute.assert_called_once_with(
+        query=format_query(
+            """
+            SELECT (SELECT count(*) FROM internal_table_name) AS rc_fact,
+                   (SELECT count(*) FROM external_table_name) AS rc_external"""
+        )
+    )
+
+    cursor.fetchall.assert_called_once()
+
+
+def test_verify_ingestion_rowcount_different(cursor: MagicMock):
+    """
+    Test verify ingestion rowcount, when rowcount is not equal
+    """
+    cursor.fetchall.return_value = [[100, 101]]
+
+    assert not verify_ingestion_rowcount(
+        cursor, "internal_table_name", "external_table_name"
+    )
+
+    cursor.execute.assert_called_once_with(
+        query=format_query(
+            """
+            SELECT (SELECT count(*) FROM internal_table_name) AS rc_fact,
+                   (SELECT count(*) FROM external_table_name) AS rc_external"""
+        )
+    )
+
+    cursor.fetchall.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "fetch_return,expected", [([], True), ([["some_file_name"]], False)]
+)
+def test_verify_ingestion_file_names(
+    cursor: MagicMock, mocker: MockerFixture, fetch_return: Sequence, expected: bool
+):
+    """
+    test verify ingestion correct and incorrect cases
+    """
+
+    mocker.patch(
+        "firebolt_ingest.table_utils.get_table_columns",
+        return_value=["source_file_name", "source_file_timestamp", "other_column"],
+    )
+    cursor.fetchall.return_value = fetch_return
+
+    assert verify_ingestion_file_names(cursor, "internal_table_name") == expected
+
+    cursor.execute.assert_called_once_with(
+        query=format_query(
+            """
+            SELECT source_file_name FROM internal_table_name
+            GROUP BY source_file_name
+            HAVING count(DISTINCT source_file_timestamp) <> 1"""
+        )
+    )
+    cursor.fetchall.assert_called_once()
+
+
+def test_verify_ingestion_file_names_no_meta(cursor: MagicMock, mocker: MockerFixture):
+    """
+    test verify ingestion no file metacolumns
+    """
+
+    mocker.patch(
+        "firebolt_ingest.table_utils.get_table_columns",
+        return_value=["source_file_name", "other_column"],
+    )
+
+    assert verify_ingestion_file_names(cursor, "internal_table_name")
+
+    cursor.execute.assert_not_called()
+    cursor.fetchall.assert_not_called()

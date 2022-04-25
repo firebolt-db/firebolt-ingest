@@ -14,6 +14,7 @@ from firebolt_ingest.table_utils import (
     verify_ingestion_file_names,
     verify_ingestion_rowcount,
 )
+from firebolt_ingest.utils import format_query
 
 EXTERNAL_TABLE_PREFIX = "ex_"
 
@@ -66,7 +67,7 @@ class TableService:
         )
 
         # Execute parametrized query
-        self.connection.cursor().execute(query, params)
+        self.connection.cursor().execute(format_query(query), params)
 
     def create_internal_table(self, table: Table, add_file_metadata=True) -> None:
         """
@@ -86,9 +87,11 @@ class TableService:
         )
 
         if table.partitions:
-            query += f"PARTITION BY {table.generate_partitions_string(add_file_metadata=add_file_metadata)}\n"  # noqa: E501
+            query += (
+                f"PARTITION BY {table.generate_partitions_string()}\n"  # noqa: E501
+            )
 
-        self.connection.cursor().execute(query, columns_params)
+        self.connection.cursor().execute(format_query(query), columns_params)
 
     def insert_full_overwrite(
         self,
@@ -137,7 +140,7 @@ class TableService:
         if firebolt_dont_wait_for_upload_to_s3:
             cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
 
-        cursor.execute(query=insert_query)
+        cursor.execute(query=format_query(insert_query))
 
     def insert_incremental_append(
         self,
@@ -183,7 +186,7 @@ class TableService:
         if firebolt_dont_wait_for_upload_to_s3:
             cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
 
-        cursor.execute(query=insert_query)
+        cursor.execute(query=format_query(insert_query))
 
     def verify_ingestion(
         self, internal_table_name: str, external_table_name: str
