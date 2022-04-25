@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from pydantic import BaseSettings, SecretStr, root_validator
+from pydantic import BaseSettings, Field, SecretStr, root_validator
 
 
 class AWSCredentialsKeySecret(BaseSettings):
@@ -34,8 +34,11 @@ class AWSCredentials(BaseSettings):
 
 
 class AWSSettings(BaseSettings):
-    # TODO: add s3 regex for the s3_url
-    s3_url: str
+    s3_url: str = Field(
+        min_length=1,
+        max_length=255,
+        regex=r"^s3:\/\/[a-z0-9-]{1,64}\/[a-zA-Z0-9-_.\/]*",
+    )
     aws_credentials: Optional[AWSCredentials]
 
 
