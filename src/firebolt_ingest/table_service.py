@@ -176,7 +176,7 @@ class TableService:
                        INSERT INTO {internal_table_name}
                        SELECT *, source_file_name, source_file_timestamp
                        FROM {external_table_name}
-                       WHERE(source_file_name, source_file_timestamp)
+                       WHERE (source_file_name, source_file_timestamp)
                        NOT IN (
                             SELECT DISTINCT source_file_name,
                                             source_file_timestamp

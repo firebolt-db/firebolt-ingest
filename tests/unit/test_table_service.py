@@ -162,3 +162,41 @@ def test_insert_full_overwrite(
 
     get_table_schema_mock.assert_called_once()
     get_table_columns_mock.assert_called_once()
+
+
+def test_insert_incremental_append(
+    mock_aws_settings: AWSSettings, mocker: MockerFixture, mock_table: Table
+):
+    """
+    Happy path of insert incremental append
+    """
+
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
+    connection.cursor.return_value = cursor_mock
+
+    does_table_exists_mock = mocker.patch(
+        "firebolt_ingest.table_service.does_table_exist", return_value=[True, True]
+    )
+
+    ts = TableService(connection)
+    ts.insert_incremental_append(
+        internal_table_name="internal_table_name",
+        external_table_name="external_table_name",
+    )
+
+    cursor_mock.execute.assert_any_call(
+        query=format_query(
+            """
+            INSERT INTO internal_table_name
+            SELECT *, source_file_name, source_file_timestamp
+            FROM external_table_name
+            WHERE (source_file_name, source_file_timestamp) NOT IN (
+                SELECT DISTINCT source_file_name, source_file_timestamp
+                FROM internal_table_name)"""
+        )
+    )
+
+    does_table_exists_mock.assert_any_call(cursor_mock, "external_table_name")
+    does_table_exists_mock.assert_any_call(cursor_mock, "internal_table_name")
