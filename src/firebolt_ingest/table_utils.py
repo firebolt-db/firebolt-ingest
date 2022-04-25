@@ -1,8 +1,8 @@
 from functools import wraps
 from typing import Any, List, Optional, Sequence
 
-from firebolt.async_db import Cursor
 from firebolt.common.exception import FireboltError
+from firebolt.db import Cursor
 
 from firebolt_ingest.table_model import FILE_METADATA_COLUMNS
 from firebolt_ingest.utils import format_query
@@ -58,7 +58,7 @@ def get_table_schema(cursor: Cursor, table_name: str) -> str:
     if len(internal_table_schema) == 0:
         raise FireboltError("internal table doesn't exist")
 
-    return internal_table_schema[0]
+    return str(internal_table_schema[0])
 
 
 def drop_table(cursor: Cursor, table_name: str) -> None:
