@@ -13,7 +13,7 @@ def table_must_exist(func):
     def with_table_existence_check(cursor: Cursor, table_name: str, **kwargs):
         if not does_table_exist(cursor=cursor, table_name=table_name):
             raise FireboltError(
-                f"Table {table_name} does not exist " f"when calling {func.__name__}"
+                f"Table {table_name} does not exist when calling {func.__name__}"
             )
         return func(cursor=cursor, table_name=table_name, **kwargs)
 
