@@ -10,7 +10,7 @@ from firebolt_ingest.table_service import TableService
 from firebolt_ingest.table_utils import drop_table
 
 
-def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
+def check_columns(cursor: Cursor, table_name: str, columns_expected: List[Column]):
     def normalize_type(t: str) -> str:
         t = t.upper()
         if t == "TEXT":
@@ -25,10 +25,13 @@ def check_columns(cursor: Cursor, table_name: str, columns: List[Column]):
         [table_name],
     )
     data = cursor.fetchall()
-    columns_plain = [[column.name, normalize_type(column.type)] for column in columns]
+    columns_expected = [
+        [column.name, normalize_type(column.type)] for column in columns_expected
+    ]
+    columns_actual = [[column[0], normalize_type(column[1])] for column in data]
 
-    assert sorted(data, key=lambda x: x[0]) == sorted(
-        columns_plain, key=lambda x: x[0]
+    assert sorted(columns_actual, key=lambda x: x[0]) == sorted(
+        columns_expected, key=lambda x: x[0]
     ), "Expected columns and columns from table don't match"
 
 
