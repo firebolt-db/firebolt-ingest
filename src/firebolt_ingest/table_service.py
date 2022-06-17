@@ -11,6 +11,7 @@ from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,
     get_table_schema,
+    raise_on_tables_non_compatability,
     verify_ingestion_file_names,
     verify_ingestion_rowcount,
 )
@@ -118,7 +119,9 @@ class TableService:
         """
         cursor = self.connection.cursor()
 
-        # TODO: check internal and external tables exist
+        raise_on_tables_non_compatability(
+            cursor, internal_table_name, external_table_name
+        )
 
         # get table schema
         internal_table_schema = get_table_schema(cursor, internal_table_name)
@@ -166,6 +169,9 @@ class TableService:
 
         """
         cursor = self.connection.cursor()
+        raise_on_tables_non_compatability(
+            cursor, internal_table_name, external_table_name
+        )
 
         if not does_table_exist(cursor, internal_table_name):
             raise FireboltError(f"Fact table {internal_table_name} doesn't exist")
