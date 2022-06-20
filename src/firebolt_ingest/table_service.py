@@ -120,7 +120,10 @@ class TableService:
         cursor = self.connection.cursor()
 
         raise_on_tables_non_compatability(
-            cursor, internal_table_name, external_table_name
+            cursor,
+            internal_table_name,
+            external_table_name,
+            ignore_meta_columns=True,
         )
 
         # get table schema
@@ -170,7 +173,10 @@ class TableService:
         """
         cursor = self.connection.cursor()
         raise_on_tables_non_compatability(
-            cursor, internal_table_name, external_table_name
+            cursor,
+            internal_table_name,
+            external_table_name,
+            ignore_meta_columns=False,
         )
 
         if not does_table_exist(cursor, internal_table_name):

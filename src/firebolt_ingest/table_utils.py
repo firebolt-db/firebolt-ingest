@@ -213,28 +213,47 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
 
 
 def check_tables_compatability(
-    cursor: Cursor, internal_table_name: str, external_table_name: str
+    cursor: Cursor,
+    internal_table_name: str,
+    external_table_name: str,
+    ignore_meta_columns: bool,
 ) -> List[Tuple[str, str, str, str]]:
     """
 
     Args:
-        cursor:
-        internal_table_name:
-        external_table_name:
+        cursor: cursor to execute queiries
+        internal_table_name: name of the internal table
+        external_table_name: name of the external table
+        ignore_meta_columns: if set to True, the function will ignore the
+        source_file_name and source_file_timestamp meta columns in the internal table
 
-    Returns:
+    Returns: a list of incompatible columns as a tuple (table name where this
+    column exists, table name where the column is missing, column name, column type)
 
     """
+    internal_meta_column_constraint = ""
+    external_meta_column_append = ""
+
+    if not ignore_meta_columns:
+        internal_meta_column_constraint = (
+            "AND column_name NOT IN ('source_file_name', 'source_file_timestamp')"
+        )
+        external_meta_column_append = (
+            "UNION SELECT 'source_file_name', 'STRING' "
+            "UNION SELECT 'source_file_timestamp', 'DATETIME'"
+        )
+
     query = f"""
     WITH
     internal_columns as (SELECT column_name, data_type
                          FROM information_schema.columns
                          WHERE table_name='{internal_table_name}'
-                         AND column_name NOT
-                            IN ('source_file_name', 'source_file_timestamp')),
+                         {internal_meta_column_constraint}),
     external_columns as (SELECT column_name, data_type
                          FROM information_schema.columns
-                         WHERE table_name='{external_table_name}'),
+                         WHERE table_name='{external_table_name}'
+                         {external_meta_column_append}
+                         ),
     common_columns as (SELECT e.column_name, e.data_type FROM internal_columns i
                        JOIN external_columns e
                        ON i.column_name = e.column_name
@@ -256,15 +275,17 @@ def check_tables_compatability(
 
 
 def raise_on_tables_non_compatability(
-    cursor: Cursor, internal_table_name: str, external_table_name: str
-) -> None:
+    cursor: Cursor,
+    internal_table_name: str,
+    external_table_name: str,
+    ignore_meta_columns: bool,
+):
     """
     Check whether internal and external tables are compatible,
     and if not raise an exception with an appropriate error message
     """
-
     non_compatible_columns = check_tables_compatability(
-        cursor, internal_table_name, external_table_name
+        cursor, internal_table_name, external_table_name, ignore_meta_columns
     )
     if len(non_compatible_columns) != 0:
         raise FireboltError(
