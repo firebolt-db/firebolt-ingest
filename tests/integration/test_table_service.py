@@ -281,3 +281,29 @@ def test_ingestion_incompatible_schema(
 
     data = cursor.fetchall()
     assert data[0][0] == 1
+
+
+def test_ingestion_append_nometadata(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
+    """
+    try ingestion with full overwrite, expect an exception
+    and verify the original table is not destroyed
+    """
+    ts = TableService(connection)
+
+    int_table_name = mock_table.table_name
+    ext_table_name = f"ex_{mock_table.table_name}"
+    ts.create_internal_table(mock_table, add_file_metadata=False)
+
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    with pytest.raises(FireboltError) as err:
+        ts.insert_incremental_append(
+            internal_table_name=int_table_name,
+            external_table_name=ext_table_name,
+            firebolt_dont_wait_for_upload_to_s3=True,
+        )
+
+    assert "source_file_name" in str(err)
+    assert "source_file_timestamp" in str(err)

@@ -231,16 +231,16 @@ def check_tables_compatability(
     column exists, table name where the column is missing, column name, column type)
 
     """
-    internal_meta_column_constraint = ""
-    external_meta_column_append = ""
-
-    if not ignore_meta_columns:
+    if ignore_meta_columns:
+        external_meta_column_append = ""
         internal_meta_column_constraint = (
             "AND column_name NOT IN ('source_file_name', 'source_file_timestamp')"
         )
+    else:
+        internal_meta_column_constraint = ""
         external_meta_column_append = (
-            "UNION SELECT 'source_file_name', 'STRING' "
-            "UNION SELECT 'source_file_timestamp', 'DATETIME'"
+            "UNION SELECT 'source_file_name', 'TEXT' "
+            "UNION SELECT 'source_file_timestamp', 'TIMESTAMP'"
         )
 
     query = f"""

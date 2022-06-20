@@ -80,8 +80,8 @@ class Column(BaseModel):
 
 
 FILE_METADATA_COLUMNS: List[Column] = [
-    Column(name="source_file_name", type="STRING"),
-    Column(name="source_file_timestamp", type="DATETIME"),
+    Column(name="source_file_name", type="TEXT"),
+    Column(name="source_file_timestamp", type="TIMESTAMP"),
 ]
 
 
