@@ -26,7 +26,11 @@ def mock_table():
         table_name="table_name",
         file_type="PARQUET",
         object_pattern=["*0.parquet", "*1.parquet"],
-        columns=[Column(name="id", type="INT"), Column(name="name", type="TEXT")],
+        columns=[
+            Column(name="id", type="INT"),
+            Column(name="name", type="TEXT"),
+            Column(name="name.member0", alias="aliased", type="TEXT"),
+        ],
         primary_index=["id"],
     )
 
@@ -40,7 +44,7 @@ def mock_table_partitioned_by_file():
         object_pattern=["*0.parquet", "*1.parquet"],
         columns=[
             Column(name="id", type="INT"),
-            Column(name="name", type="TEXT"),
+            Column(name="last_time.member0", alias="last_time", type="TIMESTAMP"),
             Column(name="source_file_name", type="TEXT"),
             Column(name="source_file_timestamp", type="TIMESTAMP"),
         ],
@@ -48,7 +52,7 @@ def mock_table_partitioned_by_file():
             Partition(column_name="source_file_name"),
             Partition(column_name="source_file_timestamp"),
         ],
-        primary_index=["id"],
+        primary_index=["last_time"],
     )
 
 
@@ -62,7 +66,7 @@ def mock_table_partitioned():
         columns=[
             Column(name="id", type="INT"),
             Column(name="user", type="STRING"),
-            Column(name="birthdate", type="DATE"),
+            Column(name="l_birthdate.member0", alias="birthdate", type="DATE"),
         ],
         partitions=[
             Partition(column_name="user"),
@@ -82,10 +86,10 @@ def table_dict() -> dict:
                 "type": "INT",
                 "extract_partition": "[^\\/]+\\/c_type=([^\\/]+)\\/[^\\/]+\\/[^\\/]+",
             },
-            {"name": "test_col_2", "type": "TEXT"},
+            {"name": "test_col_2.member0", "alias": "test_col_2", "type": "TEXT"},
             {"name": "test_col_3", "type": "DATE"},
         ],
-        "primary_index": ["test_col_1"],
+        "primary_index": ["test_col_2"],
         "partitions": [
             {"column_name": "test_col_2"},
             {"column_name": "test_col_3", "datetime_part": "DAY"},

@@ -56,10 +56,12 @@ def test_drop_table(mocker: MockerFixture, table_name: str):
 
 def test_get_table_columns(mocker: MockerFixture, table_name: str, cursor: MagicMock):
     mocker.patch("firebolt_ingest.table_utils.does_table_exist", return_value=True)
+    cursor.fetchall.return_value = [["id", "INT"], ["name", "TEXT"]]
     columns = get_table_columns(cursor=cursor, table_name=table_name)
 
-    assert columns == [column.name for column in cursor.description]
-    cursor.execute.assert_called_once_with(f"SELECT * FROM {table_name} LIMIT 0")
+    cursor.fetchall.assert_called_once_with()
+
+    assert columns == [("id", "INT"), ("name", "TEXT")]
 
 
 def test_does_table_exist(table_name: str, cursor: MagicMock):
@@ -126,7 +128,11 @@ def test_verify_ingestion_file_names(
 
     mocker.patch(
         "firebolt_ingest.table_utils.get_table_columns",
-        return_value=["source_file_name", "source_file_timestamp", "other_column"],
+        return_value=[
+            ("source_file_name", "TEXT"),
+            ("source_file_timestamp", "TIMESTAMP"),
+            ("other_column", "LONG"),
+        ],
     )
     cursor.fetchall.return_value = fetch_return
 

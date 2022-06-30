@@ -59,9 +59,7 @@ def test_create_internal_table(
 ):
     """create fact table and verify the correctness of the columns"""
 
-    TableService(connection).create_internal_table(
-        table=mock_table, add_file_metadata=False
-    )
+    TableService(mock_table, connection).create_internal_table(add_file_metadata=False)
 
     cursor = connection.cursor()
     check_columns(cursor, mock_table.table_name, mock_table.columns)
@@ -72,9 +70,7 @@ def test_create_internal_table_with_meta(
 ):
     """create fact table with meta columns and verify it"""
 
-    TableService(connection).create_internal_table(
-        table=mock_table, add_file_metadata=True
-    )
+    TableService(mock_table, connection).create_internal_table(add_file_metadata=True)
 
     cursor = connection.cursor()
     check_columns(
@@ -94,12 +90,12 @@ def test_create_internal_table_twice(
     """create fact table twice and ensure,
     that the second time it fails with an exception"""
 
-    ts = TableService(connection)
+    ts = TableService(mock_table, connection)
 
-    ts.create_internal_table(table=mock_table)
+    ts.create_internal_table()
 
     with pytest.raises(FireboltError):
-        ts.create_internal_table(table=mock_table)
+        ts.create_internal_table()
 
 
 def test_create_external_table(connection, remove_all_tables_teardown):
@@ -107,21 +103,23 @@ def test_create_external_table(connection, remove_all_tables_teardown):
 
     s3_url = "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
 
-    ts = TableService(connection)
     table_name = "lineitem_ingest_integration"
     columns = [
         Column(name="l_orderkey", type="LONG"),
         Column(name="l_partkey", type="LONG"),
     ]
-
-    ts.create_external_table(
-        table=Table(
+    ts = TableService(
+        Table(
             table_name=table_name,
             columns=columns,
             file_type="PARQUET",
             object_pattern=["*.parquet"],
             primary_index=["l_orderkey"],
         ),
+        connection,
+    )
+
+    ts.create_external_table(
         aws_settings=AWSSettings(s3_url=s3_url),
     )
 
@@ -131,8 +129,6 @@ def test_create_external_table(connection, remove_all_tables_teardown):
 def test_create_external_table_twice(connection, remove_all_tables_teardown):
     """create external table twice, and verify,
     that an exception will be raised on the second call"""
-
-    ts = TableService(connection)
 
     s3_url = "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
     aws_settings = AWSSettings(s3_url=s3_url)
@@ -148,11 +144,12 @@ def test_create_external_table_twice(connection, remove_all_tables_teardown):
         object_pattern=["*.parquet"],
         primary_index=["l_orderkey"],
     )
+    ts = TableService(table, connection)
 
-    ts.create_external_table(table, aws_settings)
+    ts.create_external_table(aws_settings)
 
     with pytest.raises(FireboltError):
-        ts.create_external_table(table, aws_settings)
+        ts.create_external_table(aws_settings)
 
 
 def test_ingestion_full_overwrite(
@@ -161,18 +158,14 @@ def test_ingestion_full_overwrite(
     """
     Happy path
     """
-    ts = TableService(connection)
+    ts = TableService(mock_table, connection)
 
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
-    ts.create_internal_table(mock_table)
+    ts.create_external_table(AWSSettings(s3_url=s3_url))
+    ts.create_internal_table()
 
-    ts.insert_full_overwrite(
-        internal_table_name=mock_table.table_name,
-        external_table_name=f"ex_{mock_table.table_name}",
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
+    ts.insert_full_overwrite(firebolt_dont_wait_for_upload_to_s3=True)
 
-    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
+    assert ts.verify_ingestion()
 
 
 def test_ingestion_full_overwrite_twice(
@@ -182,25 +175,19 @@ def test_ingestion_full_overwrite_twice(
     Do full overwrite of the internal table twice,
     validating the ingestion after each overwrite
     """
-    ts = TableService(connection)
+    ts = TableService(mock_table, connection)
     connection.cursor()
 
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
-    ts.create_internal_table(mock_table)
+    ts.create_external_table(AWSSettings(s3_url=s3_url))
+    ts.create_internal_table()
+
+    ts.insert_full_overwrite(firebolt_dont_wait_for_upload_to_s3=True)
+    assert ts.verify_ingestion()
 
     ts.insert_full_overwrite(
-        internal_table_name=mock_table.table_name,
-        external_table_name=f"ex_{mock_table.table_name}",
         firebolt_dont_wait_for_upload_to_s3=True,
     )
-    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
-
-    ts.insert_full_overwrite(
-        internal_table_name=mock_table.table_name,
-        external_table_name=f"ex_{mock_table.table_name}",
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
-    assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
+    assert ts.verify_ingestion()
 
 
 def test_ingestion_append(
@@ -210,41 +197,25 @@ def test_ingestion_append(
     Do incremental append, when the internal table is empty,
     the result should be the same as in full overwrite
     """
-    ts = TableService(connection)
-
-    int_table_name = mock_table.table_name
-    ext_table_name = f"ex_{mock_table.table_name}"
-    ts.create_internal_table(mock_table)
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
-
     # Create a partial sub table
-    mock_table.table_name = "sub_lineitem"
     mock_table.object_pattern = ["*1.parquet"]
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts_sub = TableService(mock_table, connection)
+    ts_sub.create_internal_table()
+    ts_sub.create_external_table(AWSSettings(s3_url=s3_url))
 
     # First append from small table
-    ts.insert_incremental_append(
-        internal_table_name=int_table_name,
-        external_table_name=f"ex_sub_lineitem",
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
-    assert ts.verify_ingestion(int_table_name, f"ex_sub_lineitem")
+    ts_sub.insert_incremental_append(firebolt_dont_wait_for_upload_to_s3=True)
+    assert ts_sub.verify_ingestion()
+    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
     # Second append from full table
+    mock_table.object_pattern = ["*.parquet"]
+    ts = TableService(mock_table, connection)
+    ts.create_external_table(AWSSettings(s3_url=s3_url))
     ts.insert_incremental_append(
-        internal_table_name=int_table_name,
-        external_table_name=ext_table_name,
         firebolt_dont_wait_for_upload_to_s3=True,
     )
-    assert ts.verify_ingestion(int_table_name, ext_table_name)
-
-    # Try to append from the small table again
-    ts.insert_incremental_append(
-        internal_table_name=int_table_name,
-        external_table_name=f"ex_sub_lineitem",
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
-    assert ts.verify_ingestion(int_table_name, ext_table_name)
+    assert ts.verify_ingestion()
 
 
 def test_ingestion_incompatible_schema(
@@ -254,30 +225,27 @@ def test_ingestion_incompatible_schema(
     try ingestion with full overwrite, expect an exception
     and verify the original table is not destroyed
     """
-    ts = TableService(connection)
+    ts1 = TableService(mock_table, connection)
 
-    int_table_name = mock_table.table_name
-    ext_table_name = f"ex_{mock_table.table_name}"
-    ts.create_internal_table(mock_table)
+    ts1.create_internal_table()
 
     mock_table.columns[0].name += "_non_compatible"
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts2 = TableService(mock_table, connection)
+    ts2.create_external_table(AWSSettings(s3_url=s3_url))
 
     cursor = connection.cursor()
     cursor.execute(
-        f"INSERT INTO {int_table_name} "
+        f"INSERT INTO {mock_table.table_name} "
         f"VALUES (0, 0, 0, 0, 0, 0, 0, 0 , "
         f"'', '', '', '', '', '', '', '', '', '2020-10-26 10:14:15')"
     )
 
     with pytest.raises(FireboltError):
-        ts.insert_full_overwrite(
-            internal_table_name=int_table_name,
-            external_table_name=ext_table_name,
+        ts1.insert_full_overwrite(
             firebolt_dont_wait_for_upload_to_s3=True,
         )
 
-    cursor.execute(query=f"SELECT count(*) FROM {int_table_name}")
+    cursor.execute(query=f"SELECT count(*) FROM {mock_table.table_name}")
 
     data = cursor.fetchall()
     assert data[0][0] == 1
@@ -290,18 +258,14 @@ def test_ingestion_append_nometadata(
     try ingestion with full overwrite, expect an exception
     and verify the original table is not destroyed
     """
-    ts = TableService(connection)
+    ts = TableService(mock_table, connection)
 
-    int_table_name = mock_table.table_name
-    ext_table_name = f"ex_{mock_table.table_name}"
-    ts.create_internal_table(mock_table, add_file_metadata=False)
+    ts.create_internal_table(add_file_metadata=False)
 
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+    ts.create_external_table(AWSSettings(s3_url=s3_url))
 
     with pytest.raises(FireboltError) as err:
         ts.insert_incremental_append(
-            internal_table_name=int_table_name,
-            external_table_name=ext_table_name,
             firebolt_dont_wait_for_upload_to_s3=True,
         )
 

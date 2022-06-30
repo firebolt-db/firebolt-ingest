@@ -27,15 +27,23 @@ def test_column():
     Test that we can create valid columns
     Test that validations fail if a user provides a bad type for a column
     """
-    Column(name="name", type="INT")
+    with pytest.raises(ValueError):
+        Column(name="name.member", type="INT")
+
+    Column(name="name", alias="smth", type="INT")
+    Column(name="name.member", alias="name", type="INT")
     Column(name="name", type="ARRAY(INT)")
     Column(name="name", type="ARRAY(ARRAY(INT))")
 
     with pytest.raises(ValueError):
         Column(name="name", type="ARRAY()")
+    with pytest.raises(ValueError):
         Column(name="name", type="ARRAY(INT")
+    with pytest.raises(ValueError):
         Column(name="name", type="ARRAY(INT))")
+    with pytest.raises(ValueError):
         Column(name="name", type="NOTLONG")
+    with pytest.raises(ValueError):
         Column(name="name", type="INT NULL")
 
 
@@ -75,21 +83,24 @@ def test_generate_external_columns_string(mock_table):
     mock_table.columns = []
     assert mock_table.generate_external_columns_string() == ("", [])
 
-    mock_table.columns = [Column(name="id", type="TEXT")]
-    assert mock_table.generate_external_columns_string() == ("id TEXT", [])
+    mock_table.columns = [Column(name="id", alias="last_id", type="TEXT")]
+    assert mock_table.generate_external_columns_string() == ('"id" TEXT', [])
 
     mock_table.columns = [
         Column(name="id", type="TEXT"),
-        Column(name="part", type="INT"),
+        Column(name="part.name", alias="part_alias", type="INT"),
     ]
-    assert mock_table.generate_external_columns_string() == ("id TEXT, part INT", [])
+    assert mock_table.generate_external_columns_string() == (
+        '"id" TEXT, "part.name" INT',
+        [],
+    )
 
     mock_table.columns = [
         Column(name="id", type="TEXT", extract_partition=".*"),
         Column(name="part", type="INT"),
     ]
     assert mock_table.generate_external_columns_string() == (
-        "id TEXT PARTITION(?), part INT",
+        '"id" TEXT PARTITION(?), "part" INT',
         [".*"],
     )
 
@@ -101,15 +112,16 @@ def test_generate_internal_columns_string(mock_table):
     """
     mock_table.columns = [
         Column(name="id", type="TEXT", extract_partition=".*"),
-        Column(name="part", type="INT"),
+        Column(name="part", type="INT", alias="part_alias"),
     ]
     assert mock_table.generate_internal_columns_string(add_file_metadata=False) == (
-        "id TEXT, part INT",
+        "id TEXT, part_alias INT",
         [],
     )
 
     assert mock_table.generate_internal_columns_string(add_file_metadata=True) == (
-        "id TEXT, part INT, source_file_name TEXT, source_file_timestamp TIMESTAMP",
+        "id TEXT, part_alias INT, source_file_name TEXT, "
+        "source_file_timestamp TIMESTAMP",
         [],
     )
 
