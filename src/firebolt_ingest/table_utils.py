@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, Tuple
 
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
@@ -210,3 +210,90 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
 
     return cursor.execute(find_query, [table_name]) != 0
+
+
+def check_tables_compatability(
+    cursor: Cursor,
+    internal_table_name: str,
+    external_table_name: str,
+    ignore_meta_columns: bool,
+) -> List[Tuple[str, str, str, str]]:
+    """
+
+    Args:
+        cursor: cursor to execute queiries
+        internal_table_name: name of the internal table
+        external_table_name: name of the external table
+        ignore_meta_columns: if set to True, the function will ignore the
+        source_file_name and source_file_timestamp meta columns in the internal table
+
+    Returns: a list of incompatible columns as a tuple (table name where this
+    column exists, table name where the column is missing, column name, column type)
+
+    """
+    if ignore_meta_columns:
+        external_meta_column_append = ""
+        internal_meta_column_constraint = (
+            "AND column_name NOT IN ('source_file_name', 'source_file_timestamp')"
+        )
+    else:
+        internal_meta_column_constraint = ""
+        external_meta_column_append = (
+            "UNION SELECT 'source_file_name', 'TEXT' "
+            "UNION SELECT 'source_file_timestamp', 'TIMESTAMP'"
+        )
+
+    query = f"""
+    WITH
+    internal_columns as (SELECT column_name, data_type
+                         FROM information_schema.columns
+                         WHERE table_name='{internal_table_name}'
+                         {internal_meta_column_constraint}),
+    external_columns as (SELECT column_name, data_type
+                         FROM information_schema.columns
+                         WHERE table_name='{external_table_name}'
+                         {external_meta_column_append}
+                         ),
+    common_columns as (SELECT e.column_name, e.data_type FROM internal_columns i
+                       JOIN external_columns e
+                       ON i.column_name = e.column_name
+                       WHERE i.data_type = e.data_type)
+    SELECT '{external_table_name}' AS "exists",
+           '{internal_table_name}' AS "doesnt_exist", *
+    FROM external_columns
+    WHERE (column_name, data_type) NOT IN (SELECT * FROM common_columns)
+    UNION
+    SELECT '{internal_table_name}' AS "exists",
+           '{external_table_name}' AS "doesnt_exist", *
+    FROM internal_columns
+    WHERE (column_name, data_type) NOT IN (SELECT * FROM common_columns);
+    """
+
+    cursor.execute(query)
+    data = cursor.fetchall()
+    return [(str(d[0]), str(d[1]), str(d[2]), str(d[3])) for d in data]
+
+
+def raise_on_tables_non_compatability(
+    cursor: Cursor,
+    internal_table_name: str,
+    external_table_name: str,
+    ignore_meta_columns: bool,
+):
+    """
+    Check whether internal and external tables are compatible,
+    and if not raise an exception with an appropriate error message
+    """
+    non_compatible_columns = check_tables_compatability(
+        cursor, internal_table_name, external_table_name, ignore_meta_columns
+    )
+    if len(non_compatible_columns) != 0:
+        raise FireboltError(
+            "\n".join(
+                [
+                    f"Column ({column[2]} with type {column[3]}) is in {column[0]}, "
+                    f"but not in {column[1]};"
+                    for column in non_compatible_columns
+                ]
+            )
+        )

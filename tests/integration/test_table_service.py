@@ -10,6 +10,25 @@ from firebolt_ingest.table_service import TableService
 from firebolt_ingest.table_utils import drop_table
 
 
+@pytest.fixture
+def remove_all_tables_teardown(connection):
+    """
+
+    Args:
+        connection:
+
+    Returns:
+
+    """
+    yield
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT table_name from information_schema.tables")
+
+    for table_name in cursor.fetchall():
+        drop_table(cursor, table_name[0])
+
+
 def check_columns(cursor: Cursor, table_name: str, columns_expected: List[Column]):
     def normalize_type(t: str) -> str:
         t = t.upper()
@@ -20,7 +39,7 @@ def check_columns(cursor: Cursor, table_name: str, columns_expected: List[Column
 
     cursor.execute(
         "SELECT column_name, data_type "
-        "FROM INFORMATION_SCHEMA.columns "
+        "FROM information_schema.columns "
         "WHERE table_name = ?",
         [table_name],
     )
@@ -35,7 +54,9 @@ def check_columns(cursor: Cursor, table_name: str, columns_expected: List[Column
     ), "Expected columns and columns from table don't match"
 
 
-def test_create_internal_table(connection, mock_table: Table):
+def test_create_internal_table(
+    connection, mock_table: Table, remove_all_tables_teardown
+):
     """create fact table and verify the correctness of the columns"""
 
     TableService(connection).create_internal_table(
@@ -45,10 +66,10 @@ def test_create_internal_table(connection, mock_table: Table):
     cursor = connection.cursor()
     check_columns(cursor, mock_table.table_name, mock_table.columns)
 
-    drop_table(connection.cursor(), mock_table.table_name)
 
-
-def test_create_internal_table_with_meta(connection, mock_table: Table):
+def test_create_internal_table_with_meta(
+    connection, mock_table: Table, remove_all_tables_teardown
+):
     """create fact table with meta columns and verify it"""
 
     TableService(connection).create_internal_table(
@@ -66,10 +87,10 @@ def test_create_internal_table_with_meta(connection, mock_table: Table):
         ],
     )
 
-    drop_table(connection.cursor(), mock_table.table_name)
 
-
-def test_create_internal_table_twice(connection, mock_table: Table):
+def test_create_internal_table_twice(
+    connection, mock_table: Table, remove_all_tables_teardown
+):
     """create fact table twice and ensure,
     that the second time it fails with an exception"""
 
@@ -80,10 +101,8 @@ def test_create_internal_table_twice(connection, mock_table: Table):
     with pytest.raises(FireboltError):
         ts.create_internal_table(table=mock_table)
 
-    drop_table(connection.cursor(), mock_table.table_name)
 
-
-def test_create_external_table(connection):
+def test_create_external_table(connection, remove_all_tables_teardown):
     """create external table from the getting started example"""
 
     s3_url = "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
@@ -107,10 +126,9 @@ def test_create_external_table(connection):
     )
 
     check_columns(connection.cursor(), f"ex_{table_name}", columns)
-    drop_table(connection.cursor(), f"ex_{table_name}")
 
 
-def test_create_external_table_twice(connection):
+def test_create_external_table_twice(connection, remove_all_tables_teardown):
     """create external table twice, and verify,
     that an exception will be raised on the second call"""
 
@@ -136,10 +154,10 @@ def test_create_external_table_twice(connection):
     with pytest.raises(FireboltError):
         ts.create_external_table(table, aws_settings)
 
-    drop_table(connection.cursor(), f"ex_{table.table_name}")
 
-
-def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
+def test_ingestion_full_overwrite(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
     """
     Happy path
     """
@@ -156,11 +174,10 @@ def test_ingestion_full_overwrite(mock_table: Table, s3_url: str, connection):
 
     assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
 
-    drop_table(connection.cursor(), mock_table.table_name)
-    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
-
-def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connection):
+def test_ingestion_full_overwrite_twice(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
     """
     Do full overwrite of the internal table twice,
     validating the ingestion after each overwrite
@@ -185,38 +202,15 @@ def test_ingestion_full_overwrite_twice(mock_table: Table, s3_url: str, connecti
     )
     assert ts.verify_ingestion(mock_table.table_name, f"ex_{mock_table.table_name}")
 
-    drop_table(connection.cursor(), mock_table.table_name)
-    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
-
-def test_ingestion_incompatible_schema(mock_table: Table, s3_url: str, connection):
-    """
-    Validate, that if the schemes of external and internal tables do not match
-    the insert_full_overwrite raises an exception
-    """
-    ts = TableService(connection)
-
-    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
-    mock_table.columns.append(Column(name="non_existing_column", type="TEXT"))
-
-    with pytest.raises(FireboltError):
-        ts.insert_full_overwrite(
-            internal_table_name=mock_table.table_name,
-            external_table_name=f"ex_{mock_table.table_name}",
-            firebolt_dont_wait_for_upload_to_s3=True,
-        )
-
-    drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
-
-
-def test_ingestion_append(mock_table: Table, s3_url: str, connection):
+def test_ingestion_append(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
     """
     Do incremental append, when the internal table is empty,
     the result should be the same as in full overwrite
     """
     ts = TableService(connection)
-
-    connection.cursor()
 
     int_table_name = mock_table.table_name
     ext_table_name = f"ex_{mock_table.table_name}"
@@ -252,6 +246,64 @@ def test_ingestion_append(mock_table: Table, s3_url: str, connection):
     )
     assert ts.verify_ingestion(int_table_name, ext_table_name)
 
-    # drop all test tables
-    for table_name in [int_table_name, ext_table_name, "ex_sub_lineitem"]:
-        drop_table(connection.cursor(), table_name)
+
+def test_ingestion_incompatible_schema(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
+    """
+    try ingestion with full overwrite, expect an exception
+    and verify the original table is not destroyed
+    """
+    ts = TableService(connection)
+
+    int_table_name = mock_table.table_name
+    ext_table_name = f"ex_{mock_table.table_name}"
+    ts.create_internal_table(mock_table)
+
+    mock_table.columns[0].name += "_non_compatible"
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    cursor = connection.cursor()
+    cursor.execute(
+        f"INSERT INTO {int_table_name} "
+        f"VALUES (0, 0, 0, 0, 0, 0, 0, 0 , "
+        f"'', '', '', '', '', '', '', '', '', '2020-10-26 10:14:15')"
+    )
+
+    with pytest.raises(FireboltError):
+        ts.insert_full_overwrite(
+            internal_table_name=int_table_name,
+            external_table_name=ext_table_name,
+            firebolt_dont_wait_for_upload_to_s3=True,
+        )
+
+    cursor.execute(query=f"SELECT count(*) FROM {int_table_name}")
+
+    data = cursor.fetchall()
+    assert data[0][0] == 1
+
+
+def test_ingestion_append_nometadata(
+    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+):
+    """
+    try ingestion with full overwrite, expect an exception
+    and verify the original table is not destroyed
+    """
+    ts = TableService(connection)
+
+    int_table_name = mock_table.table_name
+    ext_table_name = f"ex_{mock_table.table_name}"
+    ts.create_internal_table(mock_table, add_file_metadata=False)
+
+    ts.create_external_table(mock_table, AWSSettings(s3_url=s3_url))
+
+    with pytest.raises(FireboltError) as err:
+        ts.insert_incremental_append(
+            internal_table_name=int_table_name,
+            external_table_name=ext_table_name,
+            firebolt_dont_wait_for_upload_to_s3=True,
+        )
+
+    assert "source_file_name" in str(err)
+    assert "source_file_timestamp" in str(err)

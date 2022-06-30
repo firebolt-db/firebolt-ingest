@@ -111,7 +111,7 @@ def test_create_internal_table_happy_path(
         format_query(
             """CREATE FACT TABLE table_name
                         (id INT, user STRING, birthdate DATE,
-                        source_file_name STRING, source_file_timestamp DATETIME)
+                        source_file_name TEXT, source_file_timestamp TIMESTAMP)
                         PRIMARY INDEX id
                         PARTITION BY user,EXTRACT(DAY FROM birthdate)"""
         ),
