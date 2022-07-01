@@ -5,7 +5,7 @@ from firebolt_ingest.aws_settings import (
     AWSSettings,
     generate_aws_credentials_string,
 )
-from firebolt_ingest.table_model import Table
+from firebolt_ingest.table_model import FILE_METADATA_COLUMNS, Table
 from firebolt_ingest.table_utils import (
     does_table_exist,
     drop_table,
@@ -21,7 +21,7 @@ EXTERNAL_TABLE_PREFIX = "ex_"
 
 
 class TableService:
-    def __init__(self, connection: Connection):
+    def __init__(self, table: Table, connection: Connection):
         """
         Table service class used for creation of external/internal tables and
         performing ingestion from external into internal table
@@ -30,8 +30,11 @@ class TableService:
             connection: a connection to some database/engine
         """
         self.connection = connection
+        self.table = table
+        self.internal_table_name = self.table.table_name
+        self.external_table_name = f"{EXTERNAL_TABLE_PREFIX}{self.table.table_name}"
 
-    def create_external_table(self, table: Table, aws_settings: AWSSettings) -> None:
+    def create_external_table(self, aws_settings: AWSSettings) -> None:
         """
         Constructs a query for creating an external table and executes it.
 
@@ -49,28 +52,31 @@ class TableService:
             cred_stmt, cred_params = "", []
 
         # Prepare columns
-        columns_stmt, columns_params = table.generate_external_columns_string()
+        columns_stmt, columns_params = self.table.generate_external_columns_string()
 
         # Generate query
         query = (
-            f"CREATE EXTERNAL TABLE {EXTERNAL_TABLE_PREFIX}{table.table_name}\n"
+            f"CREATE EXTERNAL TABLE {self.external_table_name}\n"
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"
-            f"OBJECT_PATTERN = {', '.join(['?'] * len(table.object_pattern))}\n"
-            f"TYPE = ({table.generate_file_type()})\n"
+            f"OBJECT_PATTERN = {', '.join(['?'] * len(self.table.object_pattern))}\n"
+            f"TYPE = ({self.table.generate_file_type()})\n"
         )
-        if table.compression:
-            query += f"COMPRESSION = {table.compression}\n"
+        if self.table.compression:
+            query += f"COMPRESSION = {self.table.compression}\n"
 
         params = (
-            cred_params + columns_params + [aws_settings.s3_url] + table.object_pattern
+            cred_params
+            + columns_params
+            + [aws_settings.s3_url]
+            + self.table.object_pattern
         )
 
         # Execute parametrized query
         self.connection.cursor().execute(format_query(query), params)
 
-    def create_internal_table(self, table: Table, add_file_metadata=True) -> None:
+    def create_internal_table(self, add_file_metadata=True) -> None:
         """
         Constructs a query for creating an internal table and executes it
 
@@ -78,26 +84,22 @@ class TableService:
             table: table definition
         """
 
-        columns_stmt, columns_params = table.generate_internal_columns_string(
+        columns_stmt, columns_params = self.table.generate_internal_columns_string(
             add_file_metadata
         )
         query = (
-            f"CREATE FACT TABLE {table.table_name}\n"
+            f"CREATE FACT TABLE {self.internal_table_name}\n"
             f"({columns_stmt})\n"
-            f"PRIMARY INDEX {table.generate_primary_index_string()}\n"
+            f"PRIMARY INDEX {self.table.generate_primary_index_string()}\n"
         )
 
-        if table.partitions:
-            query += (
-                f"PARTITION BY {table.generate_partitions_string()}\n"  # noqa: E501
-            )
+        if self.table.partitions:
+            query += f"PARTITION BY {self.table.generate_partitions_string()}\n"  # noqa: E501
 
         self.connection.cursor().execute(format_query(query), columns_params)
 
     def insert_full_overwrite(
         self,
-        internal_table_name: str,
-        external_table_name: str,
         firebolt_dont_wait_for_upload_to_s3: bool = False,
     ) -> None:
         """
@@ -119,28 +121,33 @@ class TableService:
         """
         cursor = self.connection.cursor()
 
-        raise_on_tables_non_compatability(
-            cursor,
-            internal_table_name,
-            external_table_name,
-            ignore_meta_columns=True,
-        )
+        raise_on_tables_non_compatability(cursor, self.table, ignore_meta_columns=True)
 
         # get table schema
-        internal_table_schema = get_table_schema(cursor, internal_table_name)
+        internal_table_schema = get_table_schema(cursor, self.internal_table_name)
+        internal_table_columns = get_table_columns(cursor, self.internal_table_name)
 
         # drop the table
-        drop_table(cursor, internal_table_name)
+        drop_table(cursor, self.internal_table_name)
 
         # recreate the table
         cursor.execute(query=internal_table_schema)
 
         # insert the data from external to internal
-        column_names = get_table_columns(cursor, internal_table_name)
+        column_names = [
+            (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
+            for c in self.table.columns
+        ]
+        if set((c.name, c.type) for c in FILE_METADATA_COLUMNS).issubset(
+            internal_table_columns
+        ):
+            column_names.append("source_file_name")
+            column_names.append("source_file_timestamp")
+
         insert_query = (
-            f"INSERT INTO {internal_table_name}\n"
+            f"INSERT INTO {self.internal_table_name}\n"
             f"SELECT {', '.join(column_names)}\n"
-            f"FROM {external_table_name}\n"
+            f"FROM {self.external_table_name}\n"
         )
 
         if firebolt_dont_wait_for_upload_to_s3:
@@ -150,8 +157,6 @@ class TableService:
 
     def insert_incremental_append(
         self,
-        internal_table_name: str,
-        external_table_name: str,
         firebolt_dont_wait_for_upload_to_s3: bool = False,
     ) -> None:
         """
@@ -172,27 +177,29 @@ class TableService:
 
         """
         cursor = self.connection.cursor()
-        raise_on_tables_non_compatability(
-            cursor,
-            internal_table_name,
-            external_table_name,
-            ignore_meta_columns=False,
-        )
+        raise_on_tables_non_compatability(cursor, self.table, ignore_meta_columns=False)
 
-        if not does_table_exist(cursor, internal_table_name):
-            raise FireboltError(f"Fact table {internal_table_name} doesn't exist")
-        if not does_table_exist(cursor, external_table_name):
-            raise FireboltError(f"External table {external_table_name} doesn't exist")
+        if not does_table_exist(cursor, self.internal_table_name):
+            raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
+        if not does_table_exist(cursor, self.external_table_name):
+            raise FireboltError(
+                f"External table {self.external_table_name} doesn't exist"
+            )
 
+        column_names = [
+            (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
+            for c in self.table.columns
+        ]
         insert_query = f"""
-                       INSERT INTO {internal_table_name}
-                       SELECT *, source_file_name, source_file_timestamp
-                       FROM {external_table_name}
+                       INSERT INTO {self.internal_table_name}
+                       SELECT {', '.join(column_names)},
+                              source_file_name, source_file_timestamp
+                       FROM {self.external_table_name}
                        WHERE (source_file_name, source_file_timestamp)
                        NOT IN (
                             SELECT DISTINCT source_file_name,
                                             source_file_timestamp
-                            FROM {internal_table_name})
+                            FROM {self.internal_table_name})
                        """
 
         if firebolt_dont_wait_for_upload_to_s3:
@@ -200,9 +207,7 @@ class TableService:
 
         cursor.execute(query=format_query(insert_query))
 
-    def verify_ingestion(
-        self, internal_table_name: str, external_table_name: str
-    ) -> bool:
+    def verify_ingestion(self) -> bool:
         """
         verify ingestion by running a sequence of verification, currently implemented:
         - verification by rowcount
@@ -214,5 +219,5 @@ class TableService:
 
         cursor = self.connection.cursor()
         return verify_ingestion_rowcount(
-            cursor, internal_table_name, external_table_name
-        ) and verify_ingestion_file_names(cursor, internal_table_name)
+            cursor, self.internal_table_name, self.external_table_name
+        ) and verify_ingestion_file_names(cursor, self.internal_table_name)

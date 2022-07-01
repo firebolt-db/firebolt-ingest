@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Any, List, Optional, Tuple
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, conlist, root_validator
+from pydantic import BaseModel, Field, conlist, root_validator
 from pydantic.main import ModelMetaclass
 from yaml import Loader
 
@@ -65,7 +65,8 @@ class DatetimePart(str, Enum):
 
 
 class Column(BaseModel):
-    name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
+    name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_\.]+$")
+    alias: Optional[str] = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     type: str = Field(min_length=1, max_length=255)
     extract_partition: Optional[str] = Field(min_length=1, max_length=255)
     nullable: Optional[bool] = None
@@ -77,6 +78,16 @@ class Column(BaseModel):
             return values
 
         raise ValueError("unknown column type")
+
+    @root_validator
+    def alias_validator(cls, values: dict):
+        if "." in values["name"] and not values["alias"]:
+            raise ValueError(
+                f"if case of using grouping alias is "
+                f"required for that field ({values['name']})"
+            )
+
+        return values
 
 
 FILE_METADATA_COLUMNS: List[Column] = [
@@ -126,7 +137,7 @@ class Table(BaseModel, YamlModelMixin):
         values["compression"] = values["compression"].upper()
 
         if values.get("compression") not in {"GZIP"}:
-            raise ValidationError(["unknown compression"], type(cls))
+            raise ValueError("unknown compression")
 
         return values
 
@@ -139,7 +150,7 @@ class Table(BaseModel, YamlModelMixin):
         values["file_type"] = values["file_type"].upper()
 
         if values.get("file_type") not in {"CSV", "JSON", "ORC", "PARQUET", "TCV"}:
-            raise ValidationError(["unknown file type"], type(cls))
+            raise ValueError("unknown file type")
 
         return values
 
@@ -150,14 +161,10 @@ class Table(BaseModel, YamlModelMixin):
         and if json_parse_as_text is set, the file type is JSON
         """
         if values.get("csv_skip_header_row") and values.get("file_type") != "CSV":
-            raise ValidationError(
-                ["csv_skip_header_row is only relevant for CSV file_type"], type(cls)
-            )
+            raise ValueError("csv_skip_header_row is only relevant for CSV file_type")
 
         if values.get("json_parse_as_text") and values.get("file_type") != "JSON":
-            raise ValidationError(
-                ["json_parse_as_text is only relevant for JSON file_type"], type(cls)
-            )
+            raise ValueError("json_parse_as_text is only relevant for JSON file_type")
 
         return values
 
@@ -166,15 +173,14 @@ class Table(BaseModel, YamlModelMixin):
         """
         Ensure the primary index column names exist in the list of columns.
         """
-        column_names = {c.name for c in values["columns"]}
+        column_names = {
+            c.alias if c.alias else c.name for c in values.get("columns", [])
+        }
         for index_column in values.get("primary_index", []):
             if index_column not in column_names:
-                raise ValidationError(
-                    [
-                        f"Could not find primary index {index_column}"
-                        f" in the list of table columns."
-                    ],
-                    type(cls),
+                raise ValueError(
+                    f"Could not find primary index {index_column}"
+                    f" in the list of table columns."
                 )
         return values
 
@@ -184,27 +190,24 @@ class Table(BaseModel, YamlModelMixin):
         Ensure the partition column_name exists in the list of columns.
         Ensure partition columns that use EXTRACT refer to date/time columns.
         """
-        column_name_to_type = {c.name: c.type for c in values["columns"]}
+        column_name_to_type = {
+            (c.alias if c.alias else c.name): c.type for c in values.get("columns", [])
+        }
+
         for partition in values.get("partitions", []):
 
             if partition.column_name not in column_name_to_type.keys():
-                raise ValidationError(
-                    [
-                        f"Could not find partition column name {partition.column_name} "
-                        f"in the list of table columns"
-                    ],
-                    type(cls),
+                raise ValueError(
+                    f"Could not find partition column name {partition.column_name} "
+                    f"in the list of table columns"
                 )
 
             if partition.datetime_part is not None:
                 partition_column_type = column_name_to_type.get(partition.column_name)
                 if partition_column_type not in DATE_TIME_TYPES:
-                    raise ValidationError(
-                        [
-                            f"Partition column {partition.column_name} must be a "
-                            f"compatible datetime type, not a {partition_column_type}"
-                        ],
-                        type(cls),
+                    raise ValueError(
+                        f"Partition column {partition.column_name} must be a "
+                        f"compatible datetime type, not a {partition_column_type}"
                     )
         return values
 
@@ -244,7 +247,9 @@ class Table(BaseModel, YamlModelMixin):
 
         columns_str = []
         for column in self.columns + additional_partitions:
-            column_str = f"{column.name} {column.type}"
+            column_str = (
+                f"{column.alias if column.alias else column.name} {column.type}"
+            )
 
             column_str += " UNIQUE" if column.unique else ""
 
@@ -268,7 +273,7 @@ class Table(BaseModel, YamlModelMixin):
         column_strings = []
         for column in self.columns:
             column_strings.append(
-                f"{column.name} {column.type}"
+                f'"{column.name}" {column.type}'
                 f"{' PARTITION(?)' if column.extract_partition else ''}"
             )
 
