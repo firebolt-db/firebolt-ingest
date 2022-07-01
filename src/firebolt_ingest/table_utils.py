@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import List, Sequence, Set, Tuple
 
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
@@ -100,60 +100,6 @@ def get_table_columns(cursor: Cursor, table_name: str) -> List[Tuple]:
     return [(column_name, data_type) for column_name, data_type in cursor.fetchall()]
 
 
-@table_must_exist
-def get_table_partition_columns(cursor: Cursor, table_name: str) -> List[str]:
-    """
-    Get the names of partition columns of an existing table on Firebolt.
-
-    Args:
-        cursor: Firebolt database cursor
-        table_name: Name of the table.
-    """
-    query = """
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE
-        table_schema = ? AND
-        table_name = ? AND
-        is_in_partition_expr = 'YES'
-    """
-
-    cursor.execute(
-        query=format_query(query), parameters=(cursor.connection.database, table_name)
-    )
-    return cursor.fetchall()  # type: ignore
-
-
-@table_must_exist
-def get_partition_keys(
-    cursor: Cursor, table_name: str, where_sql: Optional[str] = None
-) -> Sequence[Any]:
-    """
-    Get the partition keys of an existing table on Firebolt.
-
-    Args:
-        cursor: Firebolt database cursor
-        table_name: Name of the table.
-        where_sql: (Optional) A where clause, for filtering data.
-            Do not include the "WHERE" keyword.
-            If no clause is provided (default), all partition keys are returned.
-    """
-    # FUTURE: replace this query with `show partitions` when
-    # https://packboard.atlassian.net/browse/FIR-2370 is completed
-    part_expr = ",".join(
-        get_table_partition_columns(cursor=cursor, table_name=table_name)
-    )
-    query = f"""
-    SELECT DISTINCT {part_expr}
-    FROM {table_name}
-    """
-    if where_sql is not None:
-        query += f"WHERE {where_sql}"
-
-    cursor.execute(format_query(query))
-    return cursor.fetchall()  # type: ignore
-
-
 def verify_ingestion_rowcount(
     cursor: Cursor, internal_table_name: str, external_table_name: str
 ) -> bool:
@@ -220,7 +166,38 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     return cursor.execute(find_query, [table_name]) != 0
 
 
-def raise_on_tables_non_compatability(
+def check_table_compatibility(
+    cursor: Cursor,
+    table_name: str,
+    expected_table_columns: Set[Tuple[str, str]],
+    skip_columns: Set[Tuple[str, str]],
+) -> List[Tuple[str, str, str, str]]:
+    """
+    Check whether actual table columns are equivalent to expected
+
+    Args:
+        cursor: cursor for query execution
+        table_name: name of the existing table, from which
+         the actual columns will be extracted
+        expected_table_columns: columns, that should be there
+        skip_columns: all errors with the specified columns will be ignored
+
+    Returns: a list of all incompatibilities as a list of tuple
+             (column_name, column_type, table_name, message)
+
+    """
+    actual_table_columns = set(get_table_columns(cursor, table_name))
+
+    error_list = []
+    for column in actual_table_columns - expected_table_columns - skip_columns:
+        error_list.append((column[0], column[1], table_name, "expected but not found"))
+    for column in expected_table_columns - actual_table_columns - skip_columns:
+        error_list.append((column[0], column[1], table_name, "found but not expected"))
+
+    return error_list
+
+
+def raise_on_tables_non_compatibility(
     cursor: Cursor,
     table: Table,
     ignore_meta_columns: bool,
@@ -229,25 +206,29 @@ def raise_on_tables_non_compatability(
     Check whether internal and external tables are compatible,
     and if not raise an exception with an appropriate error message
     """
-    internal_table_columns = set(get_table_columns(cursor, table.table_name))
-    external_table_columns = set(get_table_columns(cursor, f"ex_{table.table_name}"))
+    expected_internal_columns = set(
+        ((c.alias if c.alias else c.name), c.type) for c in table.columns
+    )
+    expected_external_columns = set((c.name, c.type) for c in table.columns)
 
-    if ignore_meta_columns:
-        internal_table_columns -= set((c.name, c.type) for c in FILE_METADATA_COLUMNS)
-    else:
-        external_table_columns.update(
-            set((c.name, c.type) for c in FILE_METADATA_COLUMNS)
+    skip_columns = (
+        [(c.name, c.type) for c in FILE_METADATA_COLUMNS] if ignore_meta_columns else []
+    )
+    if not ignore_meta_columns:
+        expected_internal_columns.update(
+            (c.name, c.type) for c in FILE_METADATA_COLUMNS
         )
 
-    error_message = ""
-    for internal_column in internal_table_columns - external_table_columns:
-        error_message += (
-            f"{internal_column} is in internal table, but not in external\n"
-        )
-    for external_column in external_table_columns - internal_table_columns:
-        error_message += (
-            f"{external_column} is in external table, but not in internal\n"
-        )
+    error_list = check_table_compatibility(
+        cursor, table.table_name, expected_internal_columns, set(skip_columns)
+    ) + check_table_compatibility(
+        cursor, f"ex_{table.table_name}", expected_external_columns, set()
+    )
 
-    if error_message:
-        raise FireboltError(error_message)
+    if error_list:
+        raise FireboltError(
+            "\n".join(
+                f"Column ({err[0]}, {err[1]}) in table ({err[2]}) {err[3]}"
+                for err in error_list
+            )
+        )

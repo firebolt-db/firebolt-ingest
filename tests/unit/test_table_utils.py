@@ -6,6 +6,7 @@ from pytest import fixture
 from pytest_mock import MockerFixture
 
 from firebolt_ingest.table_utils import (
+    check_table_compatibility,
     does_table_exist,
     drop_table,
     get_table_columns,
@@ -163,3 +164,53 @@ def test_verify_ingestion_file_names_no_meta(cursor: MagicMock, mocker: MockerFi
 
     cursor.execute.assert_not_called()
     cursor.fetchall.assert_not_called()
+
+
+def test_check_table_compatibility_happy(cursor, mocker: MockerFixture):
+    """
+    test check_table_compatibility happy path
+    """
+    mocker.patch(
+        "firebolt_ingest.table_utils.get_table_columns",
+        return_value=[("name", "TEXT"), ("id", "INT")],
+    )
+
+    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+
+    err_list = check_table_compatibility(cursor, "table_name", expected_columns, set())
+    assert len(err_list) == 0
+
+
+def test_check_table_compatibility_ignore(cursor, mocker: MockerFixture):
+    """
+    check, that incompatibility in ignore list doesn't result into an error
+    """
+    mocker.patch(
+        "firebolt_ingest.table_utils.get_table_columns",
+        return_value=[("name", "TEXT"), ("id", "INT"), ("id1", "INT")],
+    )
+
+    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+
+    err_list = check_table_compatibility(
+        cursor, "table_name", expected_columns, set([("id1", "INT")])
+    )
+    assert len(err_list) == 0
+
+
+def test_check_table_compatibility_error(cursor, mocker: MockerFixture):
+    """
+    check, whether incompatibility is caught
+    """
+    mocker.patch(
+        "firebolt_ingest.table_utils.get_table_columns",
+        return_value=[("name", "TEXT"), ("id", "INT"), ("id1", "INT")],
+    )
+
+    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+
+    err_list = check_table_compatibility(cursor, "table_name", expected_columns, set())
+    assert len(err_list) == 1
+    assert err_list[0][0] == "id1"
+    assert err_list[0][1] == "INT"
+    assert err_list[0][2] == "table_name"
