@@ -232,3 +232,27 @@ def raise_on_tables_non_compatibility(
                 for err in error_list
             )
         )
+
+
+def execute_set_statements(
+    cursor: Cursor,
+    firebolt_dont_wait_for_upload_to_s3: bool = False,
+    advanced_mode: bool = False,
+    use_short_column_path_parquet: bool = False,
+) -> None:
+    """
+    Pre-execute set statements on the cursor
+    Args:
+        firebolt_dont_wait_for_upload_to_s3: sets the variable to 1
+        advanced_mode: sets the variable to 1
+        use_short_column_path_parquet: sets the variable to 1
+
+    """
+    if firebolt_dont_wait_for_upload_to_s3:
+        cursor.execute("set firebolt_dont_wait_for_upload_to_s3=1")
+
+    if advanced_mode:
+        cursor.execute("set advanced_mode=1")
+
+    if use_short_column_path_parquet:
+        cursor.execute("set use_short_column_path_parquet=1")

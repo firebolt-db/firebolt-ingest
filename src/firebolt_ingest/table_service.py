@@ -9,6 +9,7 @@ from firebolt_ingest.table_model import FILE_METADATA_COLUMNS, Table
 from firebolt_ingest.table_utils import (
     does_table_exist,
     drop_table,
+    execute_set_statements,
     get_table_columns,
     get_table_schema,
     raise_on_tables_non_compatibility,
@@ -103,6 +104,8 @@ class TableService:
     def insert_full_overwrite(
         self,
         firebolt_dont_wait_for_upload_to_s3: bool = False,
+        advanced_mode: bool = False,
+        use_short_column_path_parquet: bool = False,
     ) -> None:
         """
         Perform a full overwrite from an external table into an internal table.
@@ -115,7 +118,9 @@ class TableService:
         Args:
             firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
                 wait until the changes will be written to s3.
-
+            advanced_mode: (Optional)
+            use_short_column_path_parquet: (Optional) Use short parquet column path
+             and skipping repeated nodes and their child node
         """
         cursor = self.connection.cursor()
 
@@ -148,14 +153,19 @@ class TableService:
             f"FROM {self.external_table_name}\n"
         )
 
-        if firebolt_dont_wait_for_upload_to_s3:
-            cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
-
+        execute_set_statements(
+            cursor,
+            firebolt_dont_wait_for_upload_to_s3,
+            advanced_mode,
+            use_short_column_path_parquet,
+        )
         cursor.execute(query=format_query(insert_query))
 
     def insert_incremental_append(
         self,
         firebolt_dont_wait_for_upload_to_s3: bool = False,
+        advanced_mode: bool = False,
+        use_short_column_path_parquet: bool = False,
     ) -> None:
         """
         Insert from the external table only new files,
@@ -167,6 +177,9 @@ class TableService:
         Args:
             firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
                 wait until the changes will be written to s3.
+            advanced_mode: (Optional)
+            use_short_column_path_parquet: (Optional) Use short parquet column path
+             and skipping repeated nodes and their child node
         Returns:
 
         """
@@ -196,9 +209,12 @@ class TableService:
                             FROM {self.internal_table_name})
                        """
 
-        if firebolt_dont_wait_for_upload_to_s3:
-            cursor.execute(query="set firebolt_dont_wait_for_upload_to_s3=1")
-
+        execute_set_statements(
+            cursor,
+            firebolt_dont_wait_for_upload_to_s3,
+            advanced_mode,
+            use_short_column_path_parquet,
+        )
         cursor.execute(query=format_query(insert_query))
 
     def verify_ingestion(self) -> bool:
