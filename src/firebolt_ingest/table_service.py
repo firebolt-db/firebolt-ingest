@@ -11,7 +11,7 @@ from firebolt_ingest.table_utils import (
     drop_table,
     get_table_columns,
     get_table_schema,
-    raise_on_tables_non_compatability,
+    raise_on_tables_non_compatibility,
     verify_ingestion_file_names,
     verify_ingestion_rowcount,
 )
@@ -27,6 +27,8 @@ class TableService:
         performing ingestion from external into internal table
 
         Args:
+            table: a definition of table, which will be used for
+             creating tables and performing an ingestion
             connection: a connection to some database/engine
         """
         self.connection = connection
@@ -111,17 +113,13 @@ class TableService:
         partitioned tables you wish to fully overwrite.
 
         Args:
-            internal_table_name: (destination) The internal table which
-                                 will be overwritten.
-            external_table_name: (source) The external table from which to load.
-
             firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
                 wait until the changes will be written to s3.
 
         """
         cursor = self.connection.cursor()
 
-        raise_on_tables_non_compatability(cursor, self.table, ignore_meta_columns=True)
+        raise_on_tables_non_compatibility(cursor, self.table, ignore_meta_columns=True)
 
         # get table schema
         internal_table_schema = get_table_schema(cursor, self.internal_table_name)
@@ -167,17 +165,13 @@ class TableService:
         (source_file_name and source_file_timestamp)
 
         Args:
-            internal_table_name: (destination) The internal table
-                                 where the data will be appended.
-            external_table_name: (source) The external table from which to load.
-
             firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
                 wait until the changes will be written to s3.
         Returns:
 
         """
         cursor = self.connection.cursor()
-        raise_on_tables_non_compatability(cursor, self.table, ignore_meta_columns=False)
+        raise_on_tables_non_compatibility(cursor, self.table, ignore_meta_columns=False)
 
         if not does_table_exist(cursor, self.internal_table_name):
             raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
@@ -211,10 +205,6 @@ class TableService:
         """
         verify ingestion by running a sequence of verification, currently implemented:
         - verification by rowcount
-
-        Args:
-            internal_table_name: Name of the fact table
-            external_table_name: Name of the external table
         """
 
         cursor = self.connection.cursor()
