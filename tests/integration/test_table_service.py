@@ -23,7 +23,9 @@ def remove_all_tables_teardown(connection):
     yield
     cursor = connection.cursor()
 
-    cursor.execute("SELECT table_name from information_schema.tables")
+    cursor.execute(
+        "SELECT table_name from information_schema.tables WHERE table_schema = 'public'"
+    )
 
     for table_name in cursor.fetchall():
         drop_table(cursor, table_name[0])
