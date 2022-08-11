@@ -3,6 +3,7 @@
 [![Nightly code check](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/nightly.yml/badge.svg)](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/nightly.yml)
 [![Unit tests](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/unit-tests.yml)
 [![Code quality checks](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/code-check.yml/badge.svg)](https://github.com/firebolt-db/firebolt-ingest/actions/workflows/code-check.yml)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yuryfirebolt/1f1682d25882f8f75003d29921feb0e4/raw/firebolt-ingest-coverage.json)
 
 The Firebolt Ingest library provides auxiliary functionality for creation external and fact tables.
 And ingest the data from one to another.
