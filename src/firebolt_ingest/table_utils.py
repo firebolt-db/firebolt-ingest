@@ -92,9 +92,9 @@ def get_table_columns(cursor: Cursor, table_name: str) -> List[Tuple]:
     """
 
     cursor.execute(
-        f"SELECT column_name, data_type "
-        f"FROM information_schema.columns "
-        f"WHERE table_name = ?",
+        "SELECT column_name, data_type "
+        "FROM information_schema.columns "
+        "WHERE table_name = ?",
         [table_name],
     )
     return [(column_name, data_type) for column_name, data_type in cursor.fetchall()]
@@ -161,7 +161,7 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     Check whether table with table_name exists,
     and return True if it exists, False otherwise.
     """
-    find_query = f"SELECT * FROM information_schema.tables WHERE table_name = ?"
+    find_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
 
     return cursor.execute(find_query, [table_name]) != 0
 
