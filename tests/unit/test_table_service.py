@@ -26,7 +26,7 @@ def test_create_external_table_happy_path(
     cursor_mock.execute.assert_called_once_with(
         format_query(
             """CREATE EXTERNAL TABLE ex_table_name
-                        ("id" INT, "name" TEXT, "name.member0" TEXT)
+                        ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
                         OBJECT_PATTERN = ?, ?
@@ -55,7 +55,7 @@ def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: 
     cursor_mock.execute.assert_called_once_with(
         format_query(
             """CREATE EXTERNAL TABLE ex_table_name
-                        ("id" INT, "name" TEXT, "name.member0" TEXT)
+                        ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
                         OBJECT_PATTERN = ?, ?
@@ -83,7 +83,7 @@ def test_create_external_table_csv(mock_aws_settings: AWSSettings, mock_table: T
     cursor_mock.execute.assert_called_once_with(
         format_query(
             """CREATE EXTERNAL TABLE ex_table_name
-                        ("id" INT, "name" TEXT, "name.member0" TEXT)
+                        ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
                         OBJECT_PATTERN = ?, ?
@@ -110,7 +110,7 @@ def test_create_internal_table_happy_path(
     cursor_mock.execute.assert_called_once_with(
         format_query(
             """CREATE FACT TABLE table_name
-                        (id INT, user STRING, birthdate DATE,
+                        (id INTEGER, user STRING, birthdate DATE,
                         source_file_name TEXT, source_file_timestamp TIMESTAMP)
                         PRIMARY INDEX id
                         PARTITION BY user,EXTRACT(DAY FROM birthdate)"""
@@ -140,7 +140,7 @@ def test_insert_full_overwrite(
         "firebolt_ingest.table_service.get_table_columns"
     )
     get_table_columns_mock.return_value = [
-        ("id", "INT"),
+        ("id", "INTEGER"),
         ("name", "TEXT"),
         ("aliased", "TEXT"),
     ]
