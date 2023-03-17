@@ -83,7 +83,7 @@ def mock_table() -> Table:
             Column(name="l_orderkey", type="BIGINT"),
             Column(name="l_partkey", type="BIGINT"),
             Column(name="l_suppkey", type="BIGINT"),
-            Column(name="l_linenumber", type="INT"),
+            Column(name="l_linenumber", type="INTEGER"),
             Column(name="l_quantity", type="BIGINT"),
             Column(name="l_extendedprice", type="BIGINT"),
             Column(name="l_discount", type="BIGINT"),

@@ -57,12 +57,12 @@ def test_drop_table(mocker: MockerFixture, table_name: str):
 
 def test_get_table_columns(mocker: MockerFixture, table_name: str, cursor: MagicMock):
     mocker.patch("firebolt_ingest.table_utils.does_table_exist", return_value=True)
-    cursor.fetchall.return_value = [["id", "INT"], ["name", "TEXT"]]
+    cursor.fetchall.return_value = [["id", "INTEGER"], ["name", "TEXT"]]
     columns = get_table_columns(cursor=cursor, table_name=table_name)
 
     cursor.fetchall.assert_called_once_with()
 
-    assert columns == [("id", "INT"), ("name", "TEXT")]
+    assert columns == [("id", "INTEGER"), ("name", "TEXT")]
 
 
 def test_does_table_exist(table_name: str, cursor: MagicMock):
@@ -172,10 +172,10 @@ def test_check_table_compatibility_happy(cursor, mocker: MockerFixture):
     """
     mocker.patch(
         "firebolt_ingest.table_utils.get_table_columns",
-        return_value=[("name", "TEXT"), ("id", "INT")],
+        return_value=[("name", "TEXT"), ("id", "INTEGER")],
     )
 
-    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+    expected_columns = set([("id", "INTEGER"), ("name", "TEXT")])
 
     err_list = check_table_compatibility(cursor, "table_name", expected_columns, set())
     assert len(err_list) == 0
@@ -187,13 +187,13 @@ def test_check_table_compatibility_ignore(cursor, mocker: MockerFixture):
     """
     mocker.patch(
         "firebolt_ingest.table_utils.get_table_columns",
-        return_value=[("name", "TEXT"), ("id", "INT"), ("id1", "INT")],
+        return_value=[("name", "TEXT"), ("id", "INTEGER"), ("id1", "INTEGER")],
     )
 
-    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+    expected_columns = set([("id", "INTEGER"), ("name", "TEXT")])
 
     err_list = check_table_compatibility(
-        cursor, "table_name", expected_columns, set([("id1", "INT")])
+        cursor, "table_name", expected_columns, set([("id1", "INTEGER")])
     )
     assert len(err_list) == 0
 
@@ -204,13 +204,13 @@ def test_check_table_compatibility_error(cursor, mocker: MockerFixture):
     """
     mocker.patch(
         "firebolt_ingest.table_utils.get_table_columns",
-        return_value=[("name", "TEXT"), ("id", "INT"), ("id1", "INT")],
+        return_value=[("name", "TEXT"), ("id", "INTEGER"), ("id1", "INTEGER")],
     )
 
-    expected_columns = set([("id", "INT"), ("name", "TEXT")])
+    expected_columns = set([("id", "INTEGER"), ("name", "TEXT")])
 
     err_list = check_table_compatibility(cursor, "table_name", expected_columns, set())
     assert len(err_list) == 1
     assert err_list[0][0] == "id1"
-    assert err_list[0][1] == "INT"
+    assert err_list[0][1] == "INTEGER"
     assert err_list[0][2] == "table_name"
