@@ -132,7 +132,7 @@ def test_verify_ingestion_file_names(
         return_value=[
             ("source_file_name", "TEXT"),
             ("source_file_timestamp", "TIMESTAMP"),
-            ("other_column", "LONG"),
+            ("other_column", "BIGINT"),
         ],
     )
     cursor.fetchall.return_value = fetch_return

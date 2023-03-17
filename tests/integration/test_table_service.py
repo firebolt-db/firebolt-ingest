@@ -107,8 +107,8 @@ def test_create_external_table(connection, remove_all_tables_teardown):
 
     table_name = "lineitem_ingest_integration"
     columns = [
-        Column(name="l_orderkey", type="LONG"),
-        Column(name="l_partkey", type="LONG"),
+        Column(name="l_orderkey", type="BIGINT"),
+        Column(name="l_partkey", type="BIGINT"),
     ]
     ts = TableService(
         Table(
@@ -139,8 +139,8 @@ def test_create_external_table_twice(connection, remove_all_tables_teardown):
     table = Table(
         table_name=table_name,
         columns=[
-            Column(name="l_orderkey", type="LONG"),
-            Column(name="l_partkey", type="LONG"),
+            Column(name="l_orderkey", type="BIGINT"),
+            Column(name="l_partkey", type="BIGINT"),
         ],
         file_type="PARQUET",
         object_pattern=["*.parquet"],
