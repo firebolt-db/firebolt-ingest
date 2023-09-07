@@ -31,12 +31,14 @@ ATOMIC_TYPES = {
     "VARCHAR",
     "STRING",
     "DATE",
+    "PGDATE",
     "DATETIME",
-    "TIMESTAMP",
+    "TIMESTAMPNTZ",
+    "TIMESTAMPTZ",
     "BOOLEAN",
 }
 
-DATE_TIME_TYPES = {"DATE", "TIMESTAMP", "DATETIME"}
+DATE_TIME_TYPES = {"DATE", "DATETIME", "TIMESTAMP", "TIMESTAMPNTZ", "TIMESTAMPTZ"}
 
 
 def match_array(s: str) -> bool:
@@ -92,7 +94,7 @@ class Column(BaseModel):
 
 FILE_METADATA_COLUMNS: List[Column] = [
     Column(name="source_file_name", type="TEXT"),
-    Column(name="source_file_timestamp", type="TIMESTAMP"),
+    Column(name="source_file_timestamp", type="TIMESTAMPNTZ"),
 ]
 
 

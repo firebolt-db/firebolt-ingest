@@ -111,7 +111,7 @@ def test_create_internal_table_happy_path(
         format_query(
             """CREATE FACT TABLE table_name
                         (id INTEGER, user STRING, birthdate DATE,
-                        source_file_name TEXT, source_file_timestamp TIMESTAMP)
+                        source_file_name TEXT, source_file_timestamp TIMESTAMPNTZ)
                         PRIMARY INDEX id
                         PARTITION BY user,EXTRACT(DAY FROM birthdate)"""
         ),
@@ -188,7 +188,7 @@ def test_insert_incremental_append(mocker: MockerFixture, mock_table: Table):
             SELECT "id", "name", "name.member0" AS aliased,
                    source_file_name, source_file_timestamp
             FROM ex_table_name
-            WHERE (source_file_name, source_file_timestamp) NOT IN (
+            WHERE (source_file_name, source_file_timestamp::timestampntz) NOT IN (
                 SELECT DISTINCT source_file_name, source_file_timestamp
                 FROM table_name)"""
         )

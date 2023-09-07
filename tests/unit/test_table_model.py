@@ -121,7 +121,7 @@ def test_generate_internal_columns_string(mock_table):
 
     assert mock_table.generate_internal_columns_string(add_file_metadata=True) == (
         "id TEXT, part_alias INT, source_file_name TEXT, "
-        "source_file_timestamp TIMESTAMP",
+        "source_file_timestamp TIMESTAMPNTZ",
         [],
     )
 

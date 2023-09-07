@@ -202,7 +202,7 @@ class TableService:
                        SELECT {', '.join(column_names)},
                               source_file_name, source_file_timestamp
                        FROM {self.external_table_name}
-                       WHERE (source_file_name, source_file_timestamp)
+                       WHERE (source_file_name, source_file_timestamp::timestampntz)
                        NOT IN (
                             SELECT DISTINCT source_file_name,
                                             source_file_timestamp
