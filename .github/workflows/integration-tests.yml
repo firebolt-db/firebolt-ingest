@@ -34,7 +34,7 @@ jobs:
           firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
           api-endpoint: "api.dev.firebolt.io"
           region: "us-east-1"
-          instance-type: "B2"
+          instance-type: "M1"
 
       - name: Restore cached failed tests
         id: cache-tests-restore
