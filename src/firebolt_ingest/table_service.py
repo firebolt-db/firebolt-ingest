@@ -18,11 +18,15 @@ from firebolt_ingest.table_utils import (
 )
 from firebolt_ingest.utils import format_query
 
-EXTERNAL_TABLE_PREFIX = "ex_"
-
 
 class TableService:
-    def __init__(self, table: Table, connection: Connection):
+    def __init__(
+        self,
+        table: Table,
+        connection: Connection,
+        ext_prefix: str = "ex_",
+        int_prefix: str = "",
+    ):
         """
         Table service class used for creation of external/internal tables and
         performing ingestion from external into internal table
@@ -34,8 +38,8 @@ class TableService:
         """
         self.connection = connection
         self.table = table
-        self.internal_table_name = self.table.table_name
-        self.external_table_name = f"{EXTERNAL_TABLE_PREFIX}{self.table.table_name}"
+        self.internal_table_name = f"{int_prefix}{self.table.table_name}"
+        self.external_table_name = f"{ext_prefix}{self.table.table_name}"
 
     def create_external_table(self, aws_settings: AWSSettings) -> None:
         """
