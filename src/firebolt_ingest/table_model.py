@@ -70,7 +70,7 @@ class DatetimePart(str, Enum):
 class Column(BaseModel):
     name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_\.]+$")
     alias: Optional[str] = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
-    type: str = Field(min_length=1, max_length=255)
+    type: str = Field(min_length=1, max_length=255, default="TEXT")
     extract_partition: Optional[str] = Field(min_length=1, max_length=255)
     nullable: Optional[bool] = None
     unique: Optional[bool] = None
@@ -80,7 +80,9 @@ class Column(BaseModel):
         if values["type"] in ATOMIC_TYPES or match_array(values["type"]):
             return values
 
-        raise ValueError("unknown column type")
+        raise ValueError(
+            f"Unknown column type {values['type']} for column {values['name']}"
+        )
 
     @root_validator
     def alias_validator(cls, values: dict):
