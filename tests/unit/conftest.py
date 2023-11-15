@@ -88,6 +88,7 @@ def table_dict() -> dict:
             },
             {"name": "test_col_2.member0", "alias": "test_col_2", "type": "TEXT"},
             {"name": "test_col_3", "type": "DATE"},
+            {"name": "test_col_4-member0", "alias": "test_col_4", "type": "TEXT"},
         ],
         "primary_index": ["test_col_2"],
         "partitions": [
