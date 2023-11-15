@@ -48,7 +48,7 @@ def test_create_external_table_happy_path_with_prefix(
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(mock_table, connection, ext_prefix="my_ext_prefix")
+    ts = TableService(mock_table, connection, ext_prefix="my_ext_prefix_")
     mock_table.compression = "GZIP"
     ts.create_external_table(mock_aws_settings)
 
@@ -159,7 +159,7 @@ def test_create_internal_table_happy_path_with_prefix(
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(mock_table_partitioned, connection, int_prefix="my_int_prefix")
+    ts = TableService(mock_table_partitioned, connection, int_prefix="my_int_prefix_")
     ts.create_internal_table(mock_aws_settings)
 
     cursor_mock.execute.assert_called_once_with(
