@@ -123,6 +123,8 @@ class TableService:
         """
         cursor = self.connection.cursor()
 
+        # TODO: uncomment it back after the fix applied,
+        # commented because of https://packboard.atlassian.net/browse/FIR-26886
         # raise_on_tables_non_compatibility(cursor,
         #                                   self.table,
         #                                   ignore_meta_columns=True)
@@ -185,6 +187,8 @@ class TableService:
 
         """
         cursor = self.connection.cursor()
+        # TODO: uncomment it back after the fix applied,
+        # commented because of https://packboard.atlassian.net/browse/FIR-26886
         # raise_on_tables_non_compatibility(cursor,
         #                                   self.table,
         #                                   ignore_meta_columns=False)

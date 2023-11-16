@@ -145,7 +145,7 @@ def test_insert_full_overwrite(
         ("aliased", "TEXT"),
     ]
 
-    # mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
+    mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
 
     ts = TableService(mock_table, connection)
     ts.create_internal_table = MagicMock()
@@ -176,7 +176,7 @@ def test_insert_incremental_append(mocker: MockerFixture, mock_table: Table):
     does_table_exists_mock = mocker.patch(
         "firebolt_ingest.table_service.does_table_exist", return_value=[True, True]
     )
-    # mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
+    mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
 
     ts = TableService(mock_table, connection)
     ts.insert_incremental_append()
