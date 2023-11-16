@@ -68,7 +68,7 @@ class DatetimePart(str, Enum):
 
 
 class Column(BaseModel):
-    name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_\.]+$")
+    name: str = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_\-.]+$")
     alias: Optional[str] = Field(min_length=1, max_length=255, regex=r"^[0-9a-zA-Z_]+$")
     type: str = Field(min_length=1, max_length=255, default="TEXT")
     extract_partition: Optional[str] = Field(min_length=1, max_length=255)
@@ -86,7 +86,7 @@ class Column(BaseModel):
 
     @root_validator
     def alias_validator(cls, values: dict):
-        if "." in values["name"] and not values["alias"]:
+        if ("." in values["name"] or "-" in values["name"]) and not values["alias"]:
             raise ValueError(
                 f"if case of using grouping alias is "
                 f"required for that field ({values['name']})"
