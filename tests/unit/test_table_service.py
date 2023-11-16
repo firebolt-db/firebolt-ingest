@@ -37,6 +37,35 @@ def test_create_external_table_happy_path(
     )
 
 
+def test_create_external_table_happy_path_with_prefix(
+    mock_aws_settings: AWSSettings, mock_table: Table
+):
+    """
+    call create external table with external_prefix and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(mock_table, connection, external_prefix="my_external_prefix_")
+    mock_table.compression = "GZIP"
+    ts.create_external_table(mock_aws_settings)
+
+    cursor_mock.execute.assert_called_once_with(
+        format_query(
+            """CREATE EXTERNAL TABLE my_external_prefix_table_name
+                        ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
+                        CREDENTIALS = (AWS_ROLE_ARN = ?)
+                        URL = ?
+                        OBJECT_PATTERN = ?, ?
+                        TYPE = (PARQUET)
+                        COMPRESSION = GZIP"""
+        ),
+        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+    )
+
+
 def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: Table):
     """
     call create external table and check,
@@ -110,6 +139,34 @@ def test_create_internal_table_happy_path(
     cursor_mock.execute.assert_called_once_with(
         format_query(
             """CREATE FACT TABLE table_name
+                        (id INTEGER, user STRING, birthdate DATE,
+                        source_file_name TEXT, source_file_timestamp TIMESTAMP)
+                        PRIMARY INDEX id
+                        PARTITION BY user,EXTRACT(DAY FROM birthdate)"""
+        ),
+        [],
+    )
+
+
+def test_create_internal_table_happy_path_with_prefix(
+    mock_aws_settings: AWSSettings, mock_table: Table, mock_table_partitioned: Table
+):
+    """
+    call create internal table with internal_prefix and check,
+    that the correct query is being passed to cursor
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(
+        mock_table_partitioned, connection, internal_prefix="my_internal_prefix_"
+    )
+    ts.create_internal_table(mock_aws_settings)
+
+    cursor_mock.execute.assert_called_once_with(
+        format_query(
+            """CREATE FACT TABLE my_internal_prefix_table_name
                         (id INTEGER, user STRING, birthdate DATE,
                         source_file_name TEXT, source_file_timestamp TIMESTAMP)
                         PRIMARY INDEX id

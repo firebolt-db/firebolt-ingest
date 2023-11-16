@@ -18,24 +18,33 @@ from firebolt_ingest.table_utils import (
 )
 from firebolt_ingest.utils import format_query
 
-EXTERNAL_TABLE_PREFIX = "ex_"
-
 
 class TableService:
-    def __init__(self, table: Table, connection: Connection):
+    def __init__(
+        self,
+        table: Table,
+        connection: Connection,
+        external_prefix: str = "ex_",
+        internal_prefix: str = "",
+    ):
         """
         Table service class used for creation of external/internal tables and
         performing ingestion from external into internal table
 
         Args:
-            table: a definition of table, which will be used for
-             creating tables and performing an ingestion
-            connection: a connection to some database/engine
+            table (Table): An object representing the table definition. This is used for
+                creating external and internal tables and for data ingestion processes.
+            connection (Connection): A database connection object used to interact with
+                the database or engine where the tables are managed.
+            external_prefix (str, optional): A prefix string added to the table name to
+                create the name of the external table. Defaults to 'ex_'.
+            internal_prefix (str, optional): A prefix string added to the table name to
+                create the name of the internal table. Defaults to an empty string.
         """
         self.connection = connection
         self.table = table
-        self.internal_table_name = self.table.table_name
-        self.external_table_name = f"{EXTERNAL_TABLE_PREFIX}{self.table.table_name}"
+        self.internal_table_name = f"{internal_prefix}{self.table.table_name}"
+        self.external_table_name = f"{external_prefix}{self.table.table_name}"
 
     def create_external_table(self, aws_settings: AWSSettings) -> None:
         """
