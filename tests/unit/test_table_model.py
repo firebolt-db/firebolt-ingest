@@ -137,6 +137,30 @@ def test_generate_internal_columns_string(mock_table):
     )
 
 
+def test_hyphen_in_column_name(table_dict):
+    """
+    Ensure a hyphen in a column name without alias raises a validation error
+    """
+
+    table_dict["columns"] = [{"name": "test_col-4", "type": "TEXT"}]
+    with pytest.raises(ValidationError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "grouping alias" in str(e)
+
+
+def test_dot_in_column_name(table_dict):
+    """
+    Ensure a dot in a column name without alias raises a validation error
+    """
+
+    table_dict["columns"] = [{"name": "test_col.4", "type": "TEXT"}]
+    with pytest.raises(ValidationError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "grouping alias" in str(e)
+
+
 def test_empty_object_pattern(table_dict):
     """
     Ensure an empty object pattern raises a validation error
