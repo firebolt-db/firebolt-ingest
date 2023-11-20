@@ -111,7 +111,6 @@ class TableService:
 
     def insert_full_overwrite(
         self,
-        firebolt_dont_wait_for_upload_to_s3: bool = False,
         advanced_mode: bool = False,
         use_short_column_path_parquet: bool = False,
     ) -> None:
@@ -124,8 +123,6 @@ class TableService:
         partitioned tables you wish to fully overwrite.
 
         Args:
-            firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
-                wait until the changes will be written to s3.
             advanced_mode: (Optional)
             use_short_column_path_parquet: (Optional) Use short parquet column path
              and skipping repeated nodes and their child node
@@ -167,7 +164,6 @@ class TableService:
 
         execute_set_statements(
             cursor,
-            firebolt_dont_wait_for_upload_to_s3,
             advanced_mode,
             use_short_column_path_parquet,
         )
@@ -175,7 +171,6 @@ class TableService:
 
     def insert_incremental_append(
         self,
-        firebolt_dont_wait_for_upload_to_s3: bool = False,
         advanced_mode: bool = False,
         use_short_column_path_parquet: bool = False,
     ) -> None:
@@ -187,8 +182,6 @@ class TableService:
         (source_file_name and source_file_timestamp)
 
         Args:
-            firebolt_dont_wait_for_upload_to_s3: (Optional) if set, the insert will not
-                wait until the changes will be written to s3.
             advanced_mode: (Optional)
             use_short_column_path_parquet: (Optional) Use short parquet column path
              and skipping repeated nodes and their child node
@@ -227,7 +220,6 @@ class TableService:
 
         execute_set_statements(
             cursor,
-            firebolt_dont_wait_for_upload_to_s3,
             advanced_mode,
             use_short_column_path_parquet,
         )
