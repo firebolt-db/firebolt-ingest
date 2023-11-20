@@ -277,10 +277,15 @@ class Table(BaseModel, YamlModelMixin):
 
         column_strings = []
         for column in self.columns:
-            column_strings.append(
-                f'"{column.name}" {column.type}'
-                f"{' PARTITION(?)' if column.extract_partition else ''}"
-            )
+            column_str = f'"{column.name}" {column.type}'
+
+            if column.nullable is not None:
+                column_str += " NULL" if column.nullable else " NOT NULL"
+
+            if column.extract_partition:
+                column_str += f"{' PARTITION(?)'}"
+
+            column_strings.append(column_str)
 
         return ", ".join(column_strings), [
             column.extract_partition

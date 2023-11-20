@@ -87,6 +87,16 @@ def test_generate_external_columns_string(mock_table):
     assert mock_table.generate_external_columns_string() == ('"id" TEXT', [])
 
     mock_table.columns = [
+        Column(name="id", alias="last_id", type="TEXT", nullable=True)
+    ]
+    assert mock_table.generate_external_columns_string() == ('"id" TEXT NULL', [])
+
+    mock_table.columns = [
+        Column(name="id", alias="last_id", type="TEXT", nullable=False)
+    ]
+    assert mock_table.generate_external_columns_string() == ('"id" TEXT NOT NULL', [])
+
+    mock_table.columns = [
         Column(name="id", type="TEXT"),
         Column(name="part.name", alias="part_alias", type="INT"),
     ]
@@ -101,6 +111,15 @@ def test_generate_external_columns_string(mock_table):
     ]
     assert mock_table.generate_external_columns_string() == (
         '"id" TEXT PARTITION(?), "part" INT',
+        [".*"],
+    )
+
+    mock_table.columns = [
+        Column(name="id", type="TEXT", extract_partition=".*", nullable=True),
+        Column(name="part", type="INT"),
+    ]
+    assert mock_table.generate_external_columns_string() == (
+        '"id" TEXT NULL PARTITION(?), "part" INT',
         [".*"],
     )
 
