@@ -165,7 +165,7 @@ def test_ingestion_full_overwrite(
     ts.create_external_table(AWSSettings(s3_url=s3_url))
     ts.create_internal_table()
 
-    ts.insert_full_overwrite(firebolt_dont_wait_for_upload_to_s3=True)
+    ts.insert_full_overwrite()
 
     assert ts.verify_ingestion()
 
@@ -183,12 +183,10 @@ def test_ingestion_full_overwrite_twice(
     ts.create_external_table(AWSSettings(s3_url=s3_url))
     ts.create_internal_table()
 
-    ts.insert_full_overwrite(firebolt_dont_wait_for_upload_to_s3=True)
+    ts.insert_full_overwrite()
     assert ts.verify_ingestion()
 
-    ts.insert_full_overwrite(
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
+    ts.insert_full_overwrite()
     assert ts.verify_ingestion()
 
 
@@ -206,7 +204,7 @@ def test_ingestion_append(
     ts_sub.create_external_table(AWSSettings(s3_url=s3_url))
 
     # First append from small table
-    ts_sub.insert_incremental_append(firebolt_dont_wait_for_upload_to_s3=True)
+    ts_sub.insert_incremental_append()
     assert ts_sub.verify_ingestion()
     drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
@@ -214,9 +212,7 @@ def test_ingestion_append(
     mock_table.object_pattern = ["*.parquet"]
     ts = TableService(mock_table, connection)
     ts.create_external_table(AWSSettings(s3_url=s3_url))
-    ts.insert_incremental_append(
-        firebolt_dont_wait_for_upload_to_s3=True,
-    )
+    ts.insert_incremental_append()
     assert ts.verify_ingestion()
 
 
@@ -243,9 +239,7 @@ def test_ingestion_incompatible_schema(
     )
 
     with pytest.raises(FireboltError):
-        ts1.insert_full_overwrite(
-            firebolt_dont_wait_for_upload_to_s3=True,
-        )
+        ts1.insert_full_overwrite()
 
     cursor.execute(query=f"SELECT count(*) FROM {mock_table.table_name}")
 
@@ -267,9 +261,7 @@ def test_ingestion_append_nometadata(
     ts.create_external_table(AWSSettings(s3_url=s3_url))
 
     with pytest.raises(FireboltError) as err:
-        ts.insert_incremental_append(
-            firebolt_dont_wait_for_upload_to_s3=True,
-        )
+        ts.insert_incremental_append()
 
     assert "source_file_name" in str(err)
     assert "source_file_timestamp" in str(err)
