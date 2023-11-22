@@ -131,7 +131,7 @@ def test_verify_ingestion_file_names(
         "firebolt_ingest.table_utils.get_table_columns",
         return_value=[
             ("source_file_name", "TEXT"),
-            ("source_file_timestamp", "TIMESTAMP"),
+            ("source_file_timestamp", "TIMESTAMPNTZ"),
             ("other_column", "BIGINT"),
         ],
     )

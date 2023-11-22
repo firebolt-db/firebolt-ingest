@@ -81,7 +81,7 @@ def test_create_internal_table_with_meta(
         mock_table.columns
         + [
             Column(name="source_file_name", type="TEXT"),
-            Column(name="source_file_timestamp", type="TIMESTAMP"),
+            Column(name="source_file_timestamp", type="TIMESTAMPNTZ"),
         ],
     )
 

@@ -46,7 +46,7 @@ def mock_table_partitioned_by_file():
             Column(name="id", type="INTEGER"),
             Column(name="last_time.member0", alias="last_time", type="TIMESTAMP"),
             Column(name="source_file_name", type="TEXT"),
-            Column(name="source_file_timestamp", type="TIMESTAMP"),
+            Column(name="source_file_timestamp", type="TIMESTAMPNTZ"),
         ],
         partitions=[
             Partition(column_name="source_file_name"),
