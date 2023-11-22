@@ -147,17 +147,21 @@ class TableService:
 
         def is_column_present(column, internal_table_columns):
             name, type_ = column.name, column.type
-            return any([
-                (name, type_) in internal_table_columns,
-                (name, type_.replace("NTZ", "")) in internal_table_columns
-            ])
+            return any(
+                [
+                    (name, type_) in internal_table_columns,
+                    (name, type_.replace("NTZ", "")) in internal_table_columns,
+                ]
+            )
 
         # insert the data from external to internal
         column_names = [
             (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
             for c in self.table.columns
         ]
-        if all(is_column_present(c, internal_table_columns) for c in FILE_METADATA_COLUMNS):
+        if all(
+            is_column_present(c, internal_table_columns) for c in FILE_METADATA_COLUMNS
+        ):
             column_names.append("source_file_name")
             column_names.append("source_file_timestamp")
 
