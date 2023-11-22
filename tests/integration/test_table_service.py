@@ -216,52 +216,60 @@ def test_ingestion_append(
     assert ts.verify_ingestion()
 
 
-def test_ingestion_incompatible_schema(
-    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
-):
-    """
-    try ingestion with full overwrite, expect an exception
-    and verify the original table is not destroyed
-    """
-    ts1 = TableService(mock_table, connection)
+# This test doesn't raise an exception because raise_on_tables_non_compatibility
+# was commented out in DATA-2138
+# !TODO: uncomment it after FIR-26886 will be fixed
+#
+# def test_ingestion_incompatible_schema(
+#    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+# ):
+#    """
+#    try ingestion with full overwrite, expect an exception
+#    and verify the original table is not destroyed
+#    """
+#    ts1 = TableService(mock_table, connection)
+#
+#    ts1.create_internal_table()
+#
+#    mock_table.columns[0].name += "_non_compatible"
+#    ts2 = TableService(mock_table, connection)
+#    ts2.create_external_table(AWSSettings(s3_url=s3_url))
+#
+#    cursor = connection.cursor()
+#    cursor.execute(
+#        f"INSERT INTO {mock_table.table_name} "
+#        f"VALUES (0, 0, 0, 0, 0, 0, 0, 0 , "
+#        f"'', '', '', '', '', '', '', '', '', '2020-10-26 10:14:15')"
+#    )
+#
+#    with pytest.raises(FireboltError):
+#        ts1.insert_full_overwrite()
+#
+#    cursor.execute(query=f"SELECT count(*) FROM {mock_table.table_name}")
+#
+#    data = cursor.fetchall()
+#    assert data[0][0] == 1
 
-    ts1.create_internal_table()
+# This test doesn't raise an expected exception about columns
+# because raise_on_tables_non_compatibility was commented out in DATA-2138
+# Currently it raises: The INSERT statement failed because the number
+# of target columns (16) does not match the number of inputs specified (18)
+# !TODO: uncomment it after FIR-26886 will be fixed
+# def test_ingestion_append_nometadata(
+#    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
+# ):
+#    """
+#    try ingestion with full overwrite, expect an exception
+#    and verify the original table is not destroyed
+#    """
+#    ts = TableService(mock_table, connection)
+#
+#    ts.create_internal_table(add_file_metadata=False)
+#
+#    ts.create_external_table(AWSSettings(s3_url=s3_url))
+#
+#    with pytest.raises(FireboltError) as err:
+#        ts.insert_incremental_append()
 
-    mock_table.columns[0].name += "_non_compatible"
-    ts2 = TableService(mock_table, connection)
-    ts2.create_external_table(AWSSettings(s3_url=s3_url))
-
-    cursor = connection.cursor()
-    cursor.execute(
-        f"INSERT INTO {mock_table.table_name} "
-        f"VALUES (0, 0, 0, 0, 0, 0, 0, 0 , "
-        f"'', '', '', '', '', '', '', '', '', '2020-10-26 10:14:15')"
-    )
-
-    with pytest.raises(FireboltError):
-        ts1.insert_full_overwrite()
-
-    cursor.execute(query=f"SELECT count(*) FROM {mock_table.table_name}")
-
-    data = cursor.fetchall()
-    assert data[0][0] == 1
-
-
-def test_ingestion_append_nometadata(
-    mock_table: Table, s3_url: str, connection, remove_all_tables_teardown
-):
-    """
-    try ingestion with full overwrite, expect an exception
-    and verify the original table is not destroyed
-    """
-    ts = TableService(mock_table, connection)
-
-    ts.create_internal_table(add_file_metadata=False)
-
-    ts.create_external_table(AWSSettings(s3_url=s3_url))
-
-    with pytest.raises(FireboltError) as err:
-        ts.insert_incremental_append()
-
-    assert "source_file_name" in str(err)
-    assert "source_file_timestamp" in str(err)
+#    assert "source_file_name" in str(err)
+#    assert "source_file_timestamp" in str(err)
