@@ -1,6 +1,7 @@
 from logging import getLogger
 from os import environ
 
+from firebolt.client.auth import UsernamePassword
 from firebolt.db.connection import connect
 from pytest import fixture
 
@@ -60,8 +61,7 @@ def connection(
         engine_name=engine_name,
         account_name=account_name,
         database=database_name,
-        username=username,
-        password=password,
+        auth=UsernamePassword(username=username, password=password),
         api_endpoint=api_endpoint,
     )
 
