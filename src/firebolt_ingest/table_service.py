@@ -145,25 +145,21 @@ class TableService:
         # recreate the table
         cursor.execute(query=internal_table_schema)
 
-        def is_column_present(column, internal_table_columns):
-            name, type_ = column.name, column.type
-            return any(
-                [
-                    (name, type_) in internal_table_columns,
-                    (name, type_.replace("NTZ", "")) in internal_table_columns,
-                ]
-            )
-
         # insert the data from external to internal
         column_names = [
             (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
             for c in self.table.columns
         ]
-        if all(
-            is_column_present(c, internal_table_columns) for c in FILE_METADATA_COLUMNS
-        ):
-            column_names.append("source_file_name")
-            column_names.append("source_file_timestamp")
+
+        for c in FILE_METADATA_COLUMNS:
+            name, type_ = c.name, c.type
+            # Check if FILE_METADATA_COLUMNS is present in internal_table_columns
+            # TIMESTAMPNTZ is sometimes represented as TIMESTAMP, need to check both
+            if (name, type_) in internal_table_columns or (
+                type_ == "TIMESTAMPNTZ"
+                and (name, "TIMESTAMP") in internal_table_columns
+            ):
+                column_names.append(name)
 
         insert_query = (
             f"INSERT INTO {self.internal_table_name}\n"
