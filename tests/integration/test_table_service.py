@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 from firebolt.common.exception import FireboltError
-from firebolt.db import Cursor
+from firebolt.db.cursor import Cursor
 
 from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.table_model import Column, Table

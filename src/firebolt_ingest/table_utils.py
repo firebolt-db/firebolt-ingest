@@ -2,7 +2,7 @@ from functools import wraps
 from typing import List, Sequence, Set, Tuple
 
 from firebolt.common.exception import FireboltError
-from firebolt.db import Cursor
+from firebolt.db.cursor import Cursor
 
 from firebolt_ingest.table_model import FILE_METADATA_COLUMNS, Table
 from firebolt_ingest.utils import format_query
