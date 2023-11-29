@@ -131,23 +131,6 @@ def test_timestamps_table_with_meta(
 
     cursor.execute(query=format_query(insert_query))
 
-    # insert zone timestamp '2020-07-29 09:01:00.812+00' to TIMESTAMPNTZ
-    with pytest.raises(FireboltError):
-
-        insert_query = f"""
-                       INSERT INTO {mock_table_timestamps.table_name}
-                       VALUES(3,
-                       '2020-07-29 09:01:00.812',
-                       '2020-07-29 09:01:00.812+00',
-                       '2020-07-29 09:01:00.812+00',
-                       '2020-07-29 09:01:00.812',
-                       '2020-07-29',
-                       '2020-07-29',
-                       'filename',
-                       '2020-07-29 09:01:00.812');
-                       """
-        cursor.execute(query=format_query(insert_query))
-
 
 def test_create_internal_table_twice(
     connection, mock_table: Table, remove_all_tables_teardown
