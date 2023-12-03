@@ -8,6 +8,7 @@ from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.table_model import Column, Table
 from firebolt_ingest.table_service import TableService
 from firebolt_ingest.table_utils import drop_table
+from firebolt_ingest.utils import format_query
 
 
 @pytest.fixture
@@ -33,11 +34,13 @@ def remove_all_tables_teardown(connection):
 
 def check_columns(cursor: Cursor, table_name: str, columns_expected: List[Column]):
     def normalize_type(t: str) -> str:
-        t = t.upper()
-        if t == "TEXT":
-            return "STRING"
-
-        return t
+        type_mappings = {
+            "TEXT": "STRING",
+            "TIMESTAMPNTZ": "TIMESTAMP",
+            "PGDATE": "DATE",
+            "DATETIME": "TIMESTAMP",
+        }
+        return type_mappings.get(t.upper(), t.upper())
 
     cursor.execute(
         "SELECT column_name, data_type "
@@ -81,9 +84,52 @@ def test_create_internal_table_with_meta(
         mock_table.columns
         + [
             Column(name="source_file_name", type="TEXT"),
-            Column(name="source_file_timestamp", type="TIMESTAMP"),
+            Column(name="source_file_timestamp", type="TIMESTAMPNTZ"),
         ],
     )
+
+
+def test_timestamps_table_with_meta(
+    connection, mock_table_timestamps: Table, remove_all_tables_teardown
+):
+    """create fact table with meta columns and verify it"""
+
+    TableService(mock_table_timestamps, connection).create_internal_table(
+        add_file_metadata=True
+    )
+
+    cursor = connection.cursor()
+    check_columns(
+        cursor,
+        mock_table_timestamps.table_name,
+        mock_table_timestamps.columns
+        + [
+            Column(name="source_file_name", type="TEXT"),
+            Column(name="source_file_timestamp", type="TIMESTAMPNTZ"),
+        ],
+    )
+
+    insert_query = f"""
+                       INSERT INTO {mock_table_timestamps.table_name}
+                       VALUES(1, '2020-07-29 09:01:00.812',
+                       '2020-07-29 09:01:00.812',
+                       '2020-07-29 09:01:00.812+00',
+                       '2020-07-29 09:01:00.812',
+                       '2020-07-29',
+                       '2020-07-29',
+                       'filename',
+                       '2020-07-29 09:01:00.812'),
+                       (2,
+                       '2020-07-29 09:01:00.812',
+                       '2020-07-29 09:01:00.812',
+                       '2020-07-29 09:01:00.812',
+                       '2020-07-29 09:01:00.812','2020-07-29',
+                       '2020-07-29',
+                       'filename',
+                       '2020-07-29 09:01:00.812');
+                       """
+
+    cursor.execute(query=format_query(insert_query))
 
 
 def test_create_internal_table_twice(

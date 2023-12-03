@@ -140,7 +140,7 @@ def test_generate_internal_columns_string(mock_table):
 
     assert mock_table.generate_internal_columns_string(add_file_metadata=True) == (
         "id TEXT, part_alias INT, source_file_name TEXT, "
-        "source_file_timestamp TIMESTAMP",
+        "source_file_timestamp TIMESTAMPNTZ",
         [],
     )
 
@@ -201,3 +201,69 @@ def test_empty_primary_index(table_dict):
         Table.parse_obj(table_dict)
 
     assert "primary_index" in str(e)
+
+
+def test_date_time_partitions():
+    table = Table(
+        database_name="db_name",
+        table_name="table_name",
+        file_type="PARQUET",
+        object_pattern=["*.parquet"],
+        columns=[
+            Column(name="id", type="INTEGER"),
+            Column(name="date_column1", type="DATE"),
+            Column(name="date_column2", type="TIMESTAMP"),
+            Column(name="date_column3", type="DATETIME"),
+            Column(name="date_column4", type="TIMESTAMPNTZ"),
+            Column(name="date_column5", type="PGDATE"),
+        ],
+        partitions=[
+            Partition(column_name="date_column1", datetime_part="YEAR"),
+        ],
+        primary_index=["id"],
+    )
+    partition_string = table.generate_partitions_string()
+    assert "EXTRACT(YEAR FROM date_column1)" in partition_string
+
+    table.partitions = [
+        Partition(column_name="date_column2", datetime_part="HOUR"),
+    ]
+    partition_string = table.generate_partitions_string()
+    assert "EXTRACT(HOUR FROM date_column2)" in partition_string
+
+    table.partitions = [
+        Partition(column_name="date_column3", datetime_part="HOUR"),
+    ]
+    partition_string = table.generate_partitions_string()
+    assert "EXTRACT(HOUR FROM date_column3)" in partition_string
+
+    table.partitions = [
+        Partition(column_name="date_column4", datetime_part="MINUTE"),
+    ]
+    partition_string = table.generate_partitions_string()
+    assert "EXTRACT(MINUTE FROM date_column4)" in partition_string
+
+    table.partitions = [
+        Partition(column_name="date_column5", datetime_part="YEAR"),
+    ]
+    partition_string = table.generate_partitions_string()
+    assert "EXTRACT(YEAR FROM date_column5)" in partition_string
+
+
+def test_wrong_date_time_partitions():
+
+    with pytest.raises(ValidationError):
+        Table(
+            database_name="db_name",
+            table_name="table_name",
+            file_type="PARQUET",
+            object_pattern=["*.parquet"],
+            columns=[
+                Column(name="id", type="INTEGER"),
+                Column(name="date_column", type="TIMESTAMPTZ"),
+            ],
+            partitions=[
+                Partition(column_name="date_column", datetime_part="YEAR"),
+            ],
+            primary_index=["id"],
+        )

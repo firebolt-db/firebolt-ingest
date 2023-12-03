@@ -150,11 +150,16 @@ class TableService:
             (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
             for c in self.table.columns
         ]
-        if set((c.name, c.type) for c in FILE_METADATA_COLUMNS).issubset(
-            internal_table_columns
-        ):
-            column_names.append("source_file_name")
-            column_names.append("source_file_timestamp")
+
+        for c in FILE_METADATA_COLUMNS:
+            name, type_ = c.name, c.type
+            # Check if FILE_METADATA_COLUMNS is present in internal_table_columns
+            # TIMESTAMPNTZ is sometimes represented as TIMESTAMP, need to check both
+            if (name, type_) in internal_table_columns or (
+                type_ == "TIMESTAMPNTZ"
+                and (name, "TIMESTAMP") in internal_table_columns
+            ):
+                column_names.append(name)
 
         insert_query = (
             f"INSERT INTO {self.internal_table_name}\n"
@@ -211,7 +216,7 @@ class TableService:
                        SELECT {', '.join(column_names)},
                               source_file_name, source_file_timestamp
                        FROM {self.external_table_name}
-                       WHERE (source_file_name, source_file_timestamp)
+                       WHERE (source_file_name, source_file_timestamp::timestampntz)
                        NOT IN (
                             SELECT DISTINCT source_file_name,
                                             source_file_timestamp

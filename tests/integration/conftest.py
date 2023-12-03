@@ -101,3 +101,22 @@ def mock_table() -> Table:
         object_pattern=["*.parquet"],
         primary_index=["l_orderkey", "l_linenumber"],
     )
+
+
+@fixture
+def mock_table_timestamps() -> Table:
+    return Table(
+        table_name="timestamps_table",
+        columns=[
+            Column(name="id", type="INTEGER"),
+            Column(name="timestamp1", type="TIMESTAMP"),
+            Column(name="timestamp2", type="TIMESTAMPNTZ"),
+            Column(name="timestamp3", type="TIMESTAMPTZ"),
+            Column(name="timestamp4", type="DATETIME"),
+            Column(name="date1", type="DATE"),
+            Column(name="date2", type="PGDATE"),
+        ],
+        file_type="PARQUET",
+        object_pattern=["*.parquet"],
+        primary_index=["id"],
+    )
