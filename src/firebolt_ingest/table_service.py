@@ -247,12 +247,16 @@ class TableService:
         use_short_column_path_parquet: bool = False,
     ) -> None:
         """
-        Inserts data into a table based on the synchronization mode specified in the table's configuration.
+        Inserts data into a table based on the synchronization mode specified
+        in the table's configuration.
 
-        This method checks the `sync_mode` attribute of the associated table and performs an insert operation accordingly. 
-        If the `sync_mode` is set to "overwrite", it performs a full overwrite of the data in the table. 
-        If it's set to "incremental", it appends the new data incrementally. 
-        For any other `sync_mode` values, a ValueError is raised, indicating an uncertain sync mode configuration.
+        This method checks the `sync_mode` attribute of the associated table
+        and performs an insert operation accordingly.
+        If the `sync_mode` is set to "overwrite", it performs
+        a full overwrite of the data in the table.
+        If it's set to "incremental", it appends the new data incrementally.
+        For any other `sync_mode` values, a ValueError is raised, indicating
+        an uncertain sync mode configuration.
         """
         if self.table.sync_mode == "overwrite":
             self.insert_full_overwrite(
