@@ -240,3 +240,24 @@ class TableService:
         return verify_ingestion_rowcount(
             cursor, self.internal_table_name, self.external_table_name
         ) and verify_ingestion_file_names(cursor, self.internal_table_name)
+
+    def insert(
+        self,
+        advanced_mode: bool = False,
+        use_short_column_path_parquet: bool = False,
+    ) -> None:
+        if self.table.sync_mode == "overwrite":
+            self.insert_full_overwrite(
+                advanced_mode=advanced_mode,
+                use_short_column_path_parquet=use_short_column_path_parquet,
+            )
+        elif self.table.sync_mode == "incremental":
+            self.insert_incremental_append(
+                advanced_mode=advanced_mode,
+                use_short_column_path_parquet=use_short_column_path_parquet,
+            )
+        else:
+            raise ValueError(
+                "Uncertain sync mode in config \
+                use insert_full_overwrite/insert_incremental_append instead"
+            )
