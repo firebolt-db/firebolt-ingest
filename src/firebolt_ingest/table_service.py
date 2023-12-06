@@ -254,7 +254,7 @@ class TableService:
         and performs an insert operation accordingly.
         If the `sync_mode` is set to "overwrite", it performs
         a full overwrite of the data in the table.
-        If it's set to "incremental", it appends the new data incrementally.
+        If it's set to "append", it appends the new data incrementally.
         For any other `sync_mode` values, a ValueError is raised, indicating
         an uncertain sync mode configuration.
         """
@@ -263,7 +263,7 @@ class TableService:
                 advanced_mode=advanced_mode,
                 use_short_column_path_parquet=use_short_column_path_parquet,
             )
-        elif self.table.sync_mode == "incremental":
+        elif self.table.sync_mode == "append":
             self.insert_incremental_append(
                 advanced_mode=advanced_mode,
                 use_short_column_path_parquet=use_short_column_path_parquet,

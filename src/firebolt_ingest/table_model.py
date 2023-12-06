@@ -224,12 +224,12 @@ class Table(BaseModel, YamlModelMixin):
     def sync_mode_validator(cls, values: dict) -> dict:
         """
         Check whether sync_mode has one of allowed values:
-            {"overwrite", "incremental"}
+            {"overwrite", "append"}
         """
         if values.get("sync_mode"):
             values["sync_mode"] = values["sync_mode"].lower()
 
-            if values.get("sync_mode") not in {"overwrite", "incremental"}:
+            if values.get("sync_mode") not in {"overwrite", "append"}:
                 raise ValueError(f"Unknown sync mode {values.get('sync_mode')}")
 
         return values

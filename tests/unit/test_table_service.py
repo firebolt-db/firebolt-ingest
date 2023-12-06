@@ -204,9 +204,11 @@ def test_insert_full_overwrite(
 
     # mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
 
+    mock_table.sync_mode = "overwrite"
+
     ts = TableService(mock_table, connection)
     ts.create_internal_table = MagicMock()
-    ts.insert_full_overwrite()
+    ts.insert()
 
     cursor_mock.execute.assert_any_call(query="create_fact_table_request")
     cursor_mock.execute.assert_any_call(query="DROP TABLE IF EXISTS table_name CASCADE")
@@ -235,8 +237,10 @@ def test_insert_incremental_append(mocker: MockerFixture, mock_table: Table):
     )
     # mocker.patch("firebolt_ingest.table_service.raise_on_tables_non_compatibility")
 
+    mock_table.sync_mode = "append"
+
     ts = TableService(mock_table, connection)
-    ts.insert_incremental_append()
+    ts.insert()
 
     cursor_mock.execute.assert_any_call(
         query=format_query(
