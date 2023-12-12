@@ -133,6 +133,7 @@ class Table(BaseModel, YamlModelMixin):
     compression: Optional[str] = None
     csv_skip_header_row: Optional[bool] = None
     json_parse_as_text: Optional[bool] = None
+    sync_mode: Optional[str] = None
 
     @root_validator
     def compression_validator(cls, values: dict) -> dict:
@@ -217,6 +218,20 @@ class Table(BaseModel, YamlModelMixin):
                         f"Partition column {partition.column_name} must be a "
                         f"compatible datetime type, not a {partition_column_type}"
                     )
+        return values
+
+    @root_validator
+    def sync_mode_validator(cls, values: dict) -> dict:
+        """
+        Check whether sync_mode has one of allowed values:
+            {"overwrite", "append"}
+        """
+        if values.get("sync_mode"):
+            values["sync_mode"] = values["sync_mode"].lower()
+
+            if values.get("sync_mode") not in {"overwrite", "append"}:
+                raise ValueError(f"Unknown sync mode {values.get('sync_mode')}")
+
         return values
 
     def generate_file_type(self) -> str:

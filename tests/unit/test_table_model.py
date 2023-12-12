@@ -203,6 +203,17 @@ def test_empty_primary_index(table_dict):
     assert "primary_index" in str(e)
 
 
+def test_unknown_sync_mode(table_dict):
+    """
+    Ensue that unknown sync_mode raises a validation error
+    """
+    table_dict["sync_mode"] = "test"
+    with pytest.raises(ValidationError) as e:
+        Table.parse_obj(table_dict)
+
+    assert "Unknown sync mode test" in str(e)
+
+
 def test_date_time_partitions():
     table = Table(
         database_name="db_name",
