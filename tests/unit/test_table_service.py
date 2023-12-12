@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+from firebolt.common.exception import FireboltError
 from pytest_mock import MockerFixture
 
 from firebolt_ingest.aws_settings import AWSSettings
@@ -8,8 +10,16 @@ from firebolt_ingest.table_service import TableService
 from firebolt_ingest.utils import format_query
 
 
+@pytest.mark.parametrize(
+    "aws_settings, table, s3_url",
+    [
+        ("mock_aws_settings", "mock_table", "mock_s3_url"),
+        ("mock_aws_settings_without_s3_url", "mock_table_with_s3_url", "mock_s3_url_1"),
+        ("mock_aws_settings", "mock_table_with_s3_url", "mock_s3_url_1"),
+    ],
+)
 def test_create_external_table_happy_path(
-    mock_aws_settings: AWSSettings, mock_table: Table
+    aws_settings: str, table: str, s3_url: str, request
 ):
     """
     call create external table and check,
@@ -19,9 +29,10 @@ def test_create_external_table_happy_path(
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(mock_table, connection)
-    mock_table.compression = "GZIP"
-    ts.create_external_table(mock_aws_settings)
+    tb = request.getfixturevalue(table)
+    ts = TableService(tb, connection)
+    tb.compression = "GZIP"
+    ts.create_external_table(request.getfixturevalue(aws_settings))
 
     cursor_mock.execute.assert_called_once_with(
         format_query(
@@ -33,37 +44,27 @@ def test_create_external_table_happy_path(
                         TYPE = (PARQUET)
                         COMPRESSION = GZIP"""
         ),
-        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+        ["role_arn", request.getfixturevalue(s3_url), "*0.parquet", "*1.parquet"],
     )
 
 
-def test_create_external_table_happy_path_with_prefix(
-    mock_aws_settings: AWSSettings, mock_table: Table
+def test_create_external_table_without_s3_url(
+    mock_aws_settings_without_s3_url: AWSSettings, mock_table: Table
 ):
     """
-    call create external table with external_prefix and check,
-    that the correct query is being passed to cursor
+    call create external table and check if it fails with FireboltError
+    because s3_url isn't provided
     """
     connection = MagicMock()
     cursor_mock = MagicMock()
     connection.cursor.return_value = cursor_mock
 
-    ts = TableService(mock_table, connection, external_prefix="my_external_prefix_")
-    mock_table.compression = "GZIP"
-    ts.create_external_table(mock_aws_settings)
+    mock_table.file_type = "JSON"
+    mock_table.json_parse_as_text = True
 
-    cursor_mock.execute.assert_called_once_with(
-        format_query(
-            """CREATE EXTERNAL TABLE my_external_prefix_table_name
-                        ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
-                        CREDENTIALS = (AWS_ROLE_ARN = ?)
-                        URL = ?
-                        OBJECT_PATTERN = ?, ?
-                        TYPE = (PARQUET)
-                        COMPRESSION = GZIP"""
-        ),
-        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
-    )
+    ts = TableService(mock_table, connection)
+    with pytest.raises(FireboltError):
+        ts.create_external_table(mock_aws_settings_without_s3_url)
 
 
 def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: Table):

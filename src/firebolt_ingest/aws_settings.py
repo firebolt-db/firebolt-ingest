@@ -34,7 +34,7 @@ class AWSCredentials(BaseSettings):
 
 
 class AWSSettings(BaseSettings):
-    s3_url: str = Field(
+    s3_url: Optional[str] = Field(
         min_length=1,
         max_length=255,
         regex=r"^s3:\/\/[a-z0-9-]{1,64}\/[a-zA-Z0-9-_.\/]*",
