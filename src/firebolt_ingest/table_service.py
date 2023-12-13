@@ -276,3 +276,36 @@ class TableService:
                 "Uncertain sync mode in config \
                 use insert_full_overwrite/insert_incremental_append instead"
             )
+
+    def drop_internal_table(self) -> None:
+        """
+        Drops the internal table associated with the current object.
+        """
+        cursor = self.connection.cursor()
+        drop_table(cursor, self.internal_table_name)
+
+    def drop_external_table(self) -> None:
+        """
+        Drops the external table associated with the current object.
+        """
+        cursor = self.connection.cursor()
+        drop_table(cursor, self.external_table_name)
+
+    def drop_tables(self) -> None:
+        """
+        Drops both internal and external tables associated with the current object.
+        """
+        self.drop_internal_table()
+        self.drop_external_table()
+
+    def does_external_table_exist(self) -> bool:
+        """
+        Checks if the external table exists in the database.
+        """
+        return does_table_exist(self.connection.cursor(), self.external_table_name)
+
+    def does_internal_table_exist(self) -> bool:
+        """
+        Checks if the internal table exists in the database.
+        """
+        return does_table_exist(self.connection.cursor(), self.internal_table_name)
