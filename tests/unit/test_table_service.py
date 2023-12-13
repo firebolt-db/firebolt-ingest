@@ -24,6 +24,9 @@ def test_create_external_table_happy_path(
     """
     call create external table and check,
     that the correct query is being passed to cursor
+    This function runs a few times with parameters from pytest.mark.parametrize
+    aws_settings, table and s3_url in this case contains names(strings) of the mocks,
+    so you should use request.getfixturevalue to get mock's value itself
     """
     connection = MagicMock()
     cursor_mock = MagicMock()
