@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 import yaml
 
@@ -10,9 +12,28 @@ from firebolt_ingest.table_model import Column, Partition, Table
 
 
 @pytest.fixture
+def mock_s3_url():
+    return "s3://bucket-name/"
+
+
+@pytest.fixture
+def mock_s3_url_1():
+    return "s3://bucket-name-1/"
+
+
+@pytest.fixture
 def mock_aws_settings():
     return AWSSettings(
         s3_url="s3://bucket-name/",
+        aws_credentials=AWSCredentials(
+            role_creds=AWSCredentialsRole(role_arn="role_arn")
+        ),
+    )
+
+
+@pytest.fixture
+def mock_aws_settings_without_s3_url():
+    return AWSSettings(
         aws_credentials=AWSCredentials(
             role_creds=AWSCredentialsRole(role_arn="role_arn")
         ),
@@ -33,6 +54,13 @@ def mock_table():
         ],
         primary_index=["id"],
     )
+
+
+@pytest.fixture
+def mock_table_with_s3_url(mock_table):
+    mock_table_with_s3_url = copy.deepcopy(mock_table)
+    mock_table_with_s3_url.s3_url = "s3://bucket-name-1/"
+    return mock_table_with_s3_url
 
 
 @pytest.fixture

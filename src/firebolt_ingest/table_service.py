@@ -62,6 +62,9 @@ class TableService:
         else:
             cred_stmt, cred_params = "", []
 
+        if not self.table.s3_url and not aws_settings.s3_url:
+            raise FireboltError("S3 URL wasn't provided")
+
         # Prepare columns
         columns_stmt, columns_params = self.table.generate_external_columns_string()
 
@@ -80,7 +83,7 @@ class TableService:
         params = (
             cred_params
             + columns_params
-            + [aws_settings.s3_url]
+            + [self.table.s3_url if self.table.s3_url else aws_settings.s3_url]
             + self.table.object_pattern
         )
 

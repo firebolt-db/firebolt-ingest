@@ -134,6 +134,7 @@ class Table(BaseModel, YamlModelMixin):
     csv_skip_header_row: Optional[bool] = None
     json_parse_as_text: Optional[bool] = None
     sync_mode: Optional[str] = None
+    s3_url: Optional[str] = Field(regex=r"^s3:\/\/[a-z0-9-]{1,64}\/[a-zA-Z0-9-_.\/]*")
 
     @root_validator
     def compression_validator(cls, values: dict) -> dict:
