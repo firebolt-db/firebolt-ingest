@@ -287,3 +287,70 @@ def test_verify_ingestion(mocker: MockerFixture, mock_table: Table):
         cursor_mock, "table_name", "ex_table_name"
     )
     verify_ingestion_file_names_mock.assert_any_call(cursor_mock, "table_name")
+
+
+def test_does_external_table_exist(mocker: MockerFixture, mock_table: Table):
+    """
+    Test to check if the function 'does_external_table_exist' correctly
+    checks for the existence of an external table in the database.
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(mock_table, connection)
+
+    ts.does_external_table_exist()
+
+    # Use the same format for the query as used in the actual function
+    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
+
+    cursor_mock.execute.assert_called_once_with(
+        expected_query, [ts.external_table_name]
+    )
+
+
+def test_does_internal_table_exist(mocker: MockerFixture, mock_table: Table):
+    """
+    Test to check if the function 'does_internal_table_exist' correctly
+    checks for the existence of an internal table in the database.
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(mock_table, connection)
+
+    ts.does_internal_table_exist()
+
+    # Use the same format for the query as used in the actual function
+    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
+
+    cursor_mock.execute.assert_called_once_with(
+        expected_query, [ts.internal_table_name]
+    )
+
+
+def test_drop_tables(mocker: MockerFixture, mock_table: Table):
+    """
+    Test to check if the function 'drop_tables' correctly
+    drops the internal and external tables in the database.
+    """
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    cursor_mock.execute.return_value = 0
+    connection.cursor.return_value = cursor_mock
+
+    ts = TableService(mock_table, connection)
+
+    ts.drop_tables()
+
+    cursor_mock.execute.assert_any_call(query="DROP TABLE IF EXISTS table_name CASCADE")
+    cursor_mock.execute.assert_any_call(
+        query="DROP TABLE IF EXISTS ex_table_name CASCADE"
+    )
+    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
+    cursor_mock.execute.assert_any_call(expected_query, [ts.external_table_name])
+    cursor_mock.execute.assert_any_call(expected_query, [ts.internal_table_name])
