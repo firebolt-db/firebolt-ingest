@@ -234,20 +234,44 @@ def raise_on_tables_non_compatibility(
         )
 
 
-def execute_set_statements(
-    cursor: Cursor,
-    advanced_mode: bool = False,
-    use_short_column_path_parquet: bool = False,
-) -> None:
+def execute_set_statements(cursor: Cursor, **kwargs) -> None:
     """
-    Pre-execute set statements on the cursor
+    Pre-execute set statements on the cursor using keyword arguments.
+
+    Allowed kwargs:
+        - advanced_mode
+        - use_short_column_path_parquet
+        - use_classic_parquet
+        - mask_internal_errors
+
     Args:
-        advanced_mode: sets the variable to 1
-        use_short_column_path_parquet: sets the variable to 1
-
+        cursor: The database cursor.
+        kwargs: Keyword arguments for various settings.
     """
-    if advanced_mode:
-        cursor.execute("set advanced_mode=1")
 
-    if use_short_column_path_parquet:
-        cursor.execute("set use_short_column_path_parquet=1")
+    # Default values for the parameters
+    defaults = {
+        "advanced_mode": False,
+        "use_short_column_path_parquet": False,
+        "use_classic_parquet": False,
+        "mask_internal_errors": True,
+    }
+
+    # Define the allowed keywords
+    allowed_keywords = [
+        "advanced_mode",
+        "use_short_column_path_parquet",
+        "use_classic_parquet",
+        "mask_internal_errors",
+    ]
+
+    for key in allowed_keywords:
+        # Retrieve the value from kwargs or use the default value
+        value = kwargs.get(key, defaults[key])
+
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"The value for '{key}' must be a boolean, got {type(value)}"
+            )
+
+        cursor.execute(f"set {key}={int(value)}")

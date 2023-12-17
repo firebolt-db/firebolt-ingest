@@ -1,5 +1,5 @@
 from typing import Sequence
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from pytest import fixture
@@ -9,6 +9,7 @@ from firebolt_ingest.table_utils import (
     check_table_compatibility,
     does_table_exist,
     drop_table,
+    execute_set_statements,
     get_table_columns,
     get_table_schema,
     verify_ingestion_file_names,
@@ -214,3 +215,40 @@ def test_check_table_compatibility_error(cursor, mocker: MockerFixture):
     assert err_list[0][0] == "id1"
     assert err_list[0][1] == "INTEGER"
     assert err_list[0][2] == "table_name"
+
+
+def test_default_values(cursor: MagicMock):
+    execute_set_statements(cursor)
+    cursor.execute.assert_has_calls(
+        [
+            call("set mask_internal_errors=1"),
+            call("set advanced_mode=0"),
+            call("set use_classic_parquet=0"),
+            call("set use_short_column_path_parquet=0"),
+        ],
+        any_order=True,
+    )
+
+
+def test_with_provided_values(cursor: MagicMock):
+    execute_set_statements(
+        cursor,
+        advanced_mode=True,
+        use_short_column_path_parquet=True,
+        use_classic_parquet=True,
+        mask_internal_errors=False,
+    )
+    cursor.execute.assert_has_calls(
+        [
+            call("set advanced_mode=1"),
+            call("set use_short_column_path_parquet=1"),
+            call("set use_classic_parquet=1"),
+            call("set mask_internal_errors=0"),
+        ],
+        any_order=True,
+    )
+
+
+def test_with_invalid_value(cursor: MagicMock):
+    with pytest.raises(ValueError):
+        execute_set_statements(cursor, advanced_mode="not_a_boolean")
