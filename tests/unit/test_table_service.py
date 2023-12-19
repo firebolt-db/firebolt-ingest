@@ -212,8 +212,7 @@ def test_insert_full_overwrite(
 
     ts = TableService(mock_table, connection)
     ts.create_internal_table = MagicMock()
-    ts.insert()
-
+    ts.insert(advanced_mode=False, use_short_column_path_parquet=False)
     cursor_mock.execute.assert_any_call(query="create_fact_table_request")
     cursor_mock.execute.assert_any_call(query="DROP TABLE IF EXISTS table_name CASCADE")
     cursor_mock.execute.assert_any_call(

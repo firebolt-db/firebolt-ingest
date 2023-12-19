@@ -114,8 +114,7 @@ class TableService:
 
     def insert_full_overwrite(
         self,
-        advanced_mode: bool = False,
-        use_short_column_path_parquet: bool = False,
+        **kwargs,
     ) -> None:
         """
         Perform a full overwrite from an external table into an internal table.
@@ -172,16 +171,11 @@ class TableService:
 
         execute_set_statements(
             cursor,
-            advanced_mode,
-            use_short_column_path_parquet,
+            **kwargs,
         )
         cursor.execute(query=format_query(insert_query))
 
-    def insert_incremental_append(
-        self,
-        advanced_mode: bool = False,
-        use_short_column_path_parquet: bool = False,
-    ) -> None:
+    def insert_incremental_append(self, **kwargs) -> None:
         """
         Insert from the external table only new files,
         that aren't in the internal table.
@@ -228,8 +222,7 @@ class TableService:
 
         execute_set_statements(
             cursor,
-            advanced_mode,
-            use_short_column_path_parquet,
+            **kwargs,
         )
         cursor.execute(query=format_query(insert_query))
 
@@ -244,11 +237,7 @@ class TableService:
             cursor, self.internal_table_name, self.external_table_name
         ) and verify_ingestion_file_names(cursor, self.internal_table_name)
 
-    def insert(
-        self,
-        advanced_mode: bool = False,
-        use_short_column_path_parquet: bool = False,
-    ) -> None:
+    def insert(self, **kwargs) -> None:
         """
         Inserts data into a table based on the synchronization mode specified
         in the table's configuration.
@@ -262,15 +251,9 @@ class TableService:
         an uncertain sync mode configuration.
         """
         if self.table.sync_mode == "overwrite":
-            self.insert_full_overwrite(
-                advanced_mode=advanced_mode,
-                use_short_column_path_parquet=use_short_column_path_parquet,
-            )
+            self.insert_full_overwrite(**kwargs)
         elif self.table.sync_mode == "append":
-            self.insert_incremental_append(
-                advanced_mode=advanced_mode,
-                use_short_column_path_parquet=use_short_column_path_parquet,
-            )
+            self.insert_incremental_append(**kwargs)
         else:
             raise ValueError(
                 "Uncertain sync mode in config \
