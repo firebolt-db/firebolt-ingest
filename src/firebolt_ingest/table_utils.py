@@ -234,22 +234,21 @@ def raise_on_tables_non_compatibility(
         )
 
 
-def execute_set_statements(cursor: Cursor, **kwargs) -> None:
+def execute_set_statements(cursor, **kwargs):
     """
-    Pre-execute set statements on the cursor using keyword arguments.
+    Execute set statements on the cursor using keyword arguments.
 
     Allowed kwargs:
         - advanced_mode
         - use_short_column_path_parquet
-        - use_classic_parquet
-        - mask_internal_errors
+        - use_classic_parquet (only if advanced_mode==True)
+        - mask_internal_errors (only if advanced_mode==True)
 
     Args:
         cursor: The database cursor.
         kwargs: Keyword arguments for various settings.
     """
 
-    # Default values for the parameters
     defaults = {
         "advanced_mode": False,
         "use_short_column_path_parquet": False,
@@ -257,21 +256,20 @@ def execute_set_statements(cursor: Cursor, **kwargs) -> None:
         "mask_internal_errors": True,
     }
 
-    # Define the allowed keywords
-    allowed_keywords = [
-        "advanced_mode",
-        "use_short_column_path_parquet",
-        "use_classic_parquet",
-        "mask_internal_errors",
-    ]
+    # Update defaults with provided kwargs
+    params = {**defaults, **kwargs}
 
-    for key in allowed_keywords:
-        # Retrieve the value from kwargs or use the default value
-        value = kwargs.get(key, defaults[key])
-
+    for key, value in params.items():
         if not isinstance(value, bool):
             raise ValueError(
                 f"The value for '{key}' must be a boolean, got {type(value)}"
             )
 
-        cursor.execute(f"set {key}={int(value)}")
+    always_execute_keys = ["advanced_mode", "use_short_column_path_parquet"]
+    for key in always_execute_keys:
+        cursor.execute(f"set {key}={int(params[key])}")
+
+    # Those params are allowed only if 'advanced_mode' is True
+    if params["advanced_mode"]:
+        for key in ["use_classic_parquet", "mask_internal_errors"]:
+            cursor.execute(f"set {key}={int(params[key])}")
