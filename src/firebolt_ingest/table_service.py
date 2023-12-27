@@ -1,3 +1,5 @@
+import logging
+
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection
 
@@ -16,6 +18,14 @@ from firebolt_ingest.table_utils import (
     verify_ingestion_rowcount,
 )
 from firebolt_ingest.utils import format_query
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s :: %(levelname)s :: %(filename)s ::\
+ %(funcName)s :: %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 class TableService:
@@ -87,6 +97,7 @@ class TableService:
             + self.table.object_pattern
         )
 
+        logger.info(f"Create external table with query:\n{query}")
         # Execute parametrized query
         self.connection.cursor().execute(format_query(query), params)
 
@@ -110,6 +121,7 @@ class TableService:
         if self.table.partitions:
             query += f"PARTITION BY {self.table.generate_partitions_string()}\n"  # noqa: E501
 
+        logger.info(f"Create internal table with query:\n{query}")
         self.connection.cursor().execute(format_query(query), columns_params)
 
     def insert_full_overwrite(
@@ -124,7 +136,7 @@ class TableService:
         This function is appropriate for unpartitioned tables, or for
         partitioned tables you wish to fully overwrite.
 
-        Args:
+        Kwargs:
             advanced_mode: (Optional)
             use_short_column_path_parquet: (Optional) Use short parquet column path
              and skipping repeated nodes and their child node
@@ -142,9 +154,11 @@ class TableService:
         internal_table_columns = get_table_columns(cursor, self.internal_table_name)
 
         # drop the table
+        logger.info(f"Drop internal table: {self.internal_table_name}")
         drop_table(cursor, self.internal_table_name)
 
         # recreate the table
+        logger.info(f"Create internal table:\n{internal_table_schema}")
         cursor.execute(query=internal_table_schema)
 
         # insert the data from external to internal
@@ -169,6 +183,7 @@ class TableService:
             f"FROM {self.external_table_name}\n"
         )
 
+        logger.info(f"Insert with query:\n{insert_query}")
         execute_set_statements(
             cursor,
             **kwargs,
@@ -183,7 +198,7 @@ class TableService:
         Requires internal table to have file-metadata columns
         (source_file_name and source_file_timestamp)
 
-        Args:
+        Kwargs:
             advanced_mode: (Optional)
             use_short_column_path_parquet: (Optional) Use short parquet column path
              and skipping repeated nodes and their child node
@@ -220,6 +235,7 @@ class TableService:
                             FROM {self.internal_table_name})
                        """
 
+        logger.info(f"Insert with query:\n{insert_query}")
         execute_set_statements(
             cursor,
             **kwargs,
@@ -264,6 +280,7 @@ class TableService:
         """
         Drops the internal table associated with the current object.
         """
+        logger.info(f"Drop internal table: {self.internal_table_name}")
         cursor = self.connection.cursor()
         drop_table(cursor, self.internal_table_name)
 
@@ -271,6 +288,7 @@ class TableService:
         """
         Drops the external table associated with the current object.
         """
+        logger.info(f"Drop external table: {self.external_table_name}")
         cursor = self.connection.cursor()
         drop_table(cursor, self.external_table_name)
 

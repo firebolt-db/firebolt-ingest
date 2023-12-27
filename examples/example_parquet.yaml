@@ -1,0 +1,15 @@
+table_name: my_table
+primary_index:
+  - id
+columns:
+  - name: id
+    type: INTEGER
+  - name: key
+    nullable: true
+  - name: event_timestamp
+    type: TIMESTAMPNTZ
+s3_url: s3://<bucket>/<key>
+object_pattern:
+  - "*.parquet"
+file_type: PARQUET
+sync_mode: overwrite/append

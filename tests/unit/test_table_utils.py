@@ -221,9 +221,7 @@ def test_default_values(cursor: MagicMock):
     execute_set_statements(cursor)
     cursor.execute.assert_has_calls(
         [
-            call("set mask_internal_errors=1"),
             call("set advanced_mode=0"),
-            call("set use_classic_parquet=0"),
             call("set use_short_column_path_parquet=0"),
         ],
         any_order=True,
