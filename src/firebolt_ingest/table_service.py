@@ -84,7 +84,7 @@ class TableService:
             f"({columns_stmt})\n"
             f"{cred_stmt}\n"
             f"URL = ?\n"
-            f"OBJECT_PATTERN = {', '.join(['?'] * len(self.table.object_pattern))}\n"
+            f"OBJECT_PATTERN = ?\n"
             f"TYPE = ({self.table.generate_file_type()})\n"
         )
         if self.table.compression:
@@ -94,7 +94,7 @@ class TableService:
             cred_params
             + columns_params
             + [self.table.s3_url if self.table.s3_url else aws_settings.s3_url]
-            + self.table.object_pattern
+            + [self.table.object_pattern]
         )
 
         logger.info(f"Create external table with query:\n{query}")

@@ -98,7 +98,7 @@ def mock_table() -> Table:
             Column(name="l_comment", type="TEXT"),
         ],
         file_type="PARQUET",
-        object_pattern=["*.parquet"],
+        object_pattern="*.parquet",
         primary_index=["l_orderkey", "l_linenumber"],
     )
 
@@ -117,6 +117,6 @@ def mock_table_timestamps() -> Table:
             Column(name="date2", type="PGDATE"),
         ],
         file_type="PARQUET",
-        object_pattern=["*.parquet"],
+        object_pattern="*.parquet",
         primary_index=["id"],
     )

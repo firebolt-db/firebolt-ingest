@@ -161,7 +161,7 @@ def test_create_external_table(connection, remove_all_tables_teardown):
             table_name=table_name,
             columns=columns,
             file_type="PARQUET",
-            object_pattern=["*.parquet"],
+            object_pattern="*.parquet",
             primary_index=["l_orderkey"],
         ),
         connection,
@@ -189,7 +189,7 @@ def test_create_external_table_twice(connection, remove_all_tables_teardown):
             Column(name="l_partkey", type="BIGINT"),
         ],
         file_type="PARQUET",
-        object_pattern=["*.parquet"],
+        object_pattern="*.parquet",
         primary_index=["l_orderkey"],
     )
     ts = TableService(table, connection)
@@ -244,7 +244,7 @@ def test_ingestion_append(
     the result should be the same as in full overwrite
     """
     # Create a partial sub table
-    mock_table.object_pattern = ["*1.parquet"]
+    mock_table.object_pattern = "*1.parquet"
     ts_sub = TableService(mock_table, connection)
     ts_sub.create_internal_table()
     ts_sub.create_external_table(AWSSettings(s3_url=s3_url))
@@ -255,7 +255,7 @@ def test_ingestion_append(
     drop_table(connection.cursor(), f"ex_{mock_table.table_name}")
 
     # Second append from full table
-    mock_table.object_pattern = ["*.parquet"]
+    mock_table.object_pattern = "*.parquet"
     ts = TableService(mock_table, connection)
     ts.create_external_table(AWSSettings(s3_url=s3_url))
     ts.insert_incremental_append()

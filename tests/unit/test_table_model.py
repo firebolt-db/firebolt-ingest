@@ -185,7 +185,7 @@ def test_empty_object_pattern(table_dict):
     Ensure an empty object pattern raises a validation error
     """
 
-    table_dict["object_pattern"] = []
+    table_dict["object_pattern"] = ""
     with pytest.raises(ValidationError) as e:
         Table.parse_obj(table_dict)
 
@@ -219,7 +219,7 @@ def test_date_time_partitions():
         database_name="db_name",
         table_name="table_name",
         file_type="PARQUET",
-        object_pattern=["*.parquet"],
+        object_pattern="*.parquet",
         columns=[
             Column(name="id", type="INTEGER"),
             Column(name="date_column1", type="DATE"),
@@ -268,7 +268,7 @@ def test_wrong_date_time_partitions():
             database_name="db_name",
             table_name="table_name",
             file_type="PARQUET",
-            object_pattern=["*.parquet"],
+            object_pattern="*.parquet",
             columns=[
                 Column(name="id", type="INTEGER"),
                 Column(name="date_column", type="TIMESTAMPTZ"),
