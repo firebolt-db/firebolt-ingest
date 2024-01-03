@@ -190,7 +190,7 @@ class TableService:
         )
         cursor.execute(query=format_query(insert_query))
 
-    def insert_incremental_append(self, **kwargs) -> None:
+    def insert_incremental_append(self, use_materialized_query=False, **kwargs) -> None:
         """
         Insert from the external table only new files,
         that aren't in the internal table.
@@ -198,10 +198,13 @@ class TableService:
         Requires internal table to have file-metadata columns
         (source_file_name and source_file_timestamp)
 
-        Kwargs:
-            advanced_mode: (Optional)
-            use_short_column_path_parquet: (Optional) Use short parquet column path
-             and skipping repeated nodes and their child node
+        Args:
+        use_materialized_query (bool):
+            If set to True, the function uses an materialized query
+                strategy for insertion.
+            If set to False (default), the function uses the standard query approach.
+        **kwargs: Additional keyword arguments which may be passed to other functions
+            used in this method.
         Returns:
 
         """
@@ -223,17 +226,35 @@ class TableService:
             (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
             for c in self.table.columns
         ]
-        insert_query = f"""
-                       INSERT INTO {self.internal_table_name}
-                       SELECT {', '.join(column_names)},
-                              source_file_name, source_file_timestamp
-                       FROM {self.external_table_name}
-                       WHERE (source_file_name, source_file_timestamp::timestampntz)
-                       NOT IN (
-                            SELECT DISTINCT source_file_name,
-                                            source_file_timestamp
-                            FROM {self.internal_table_name})
-                       """
+
+        if use_materialized_query:
+            # Optimized query
+            insert_query = f"""
+                INSERT INTO {self.internal_table_name}
+                WITH a AS materialized (
+                    SELECT DISTINCT source_file_name
+                    FROM {self.internal_table_name}
+                )
+                SELECT {', '.join(column_names)},
+                    source_file_name, source_file_timestamp
+                FROM {self.external_table_name}
+                WHERE source_file_name NOT IN (
+                    SELECT source_file_name
+                    FROM a
+                )
+            """
+        else:
+            insert_query = f"""
+                INSERT INTO {self.internal_table_name}
+                SELECT {', '.join(column_names)},
+                        source_file_name, source_file_timestamp
+                FROM {self.external_table_name}
+                WHERE (source_file_name, source_file_timestamp::timestampntz)
+                NOT IN (
+                    SELECT DISTINCT source_file_name,
+                                    source_file_timestamp
+                    FROM {self.internal_table_name})
+                """
 
         logger.info(f"Insert with query:\n{insert_query}")
         execute_set_statements(
@@ -253,7 +274,7 @@ class TableService:
             cursor, self.internal_table_name, self.external_table_name
         ) and verify_ingestion_file_names(cursor, self.internal_table_name)
 
-    def insert(self, **kwargs) -> None:
+    def insert(self, use_materialized_query=False, **kwargs) -> None:
         """
         Inserts data into a table based on the synchronization mode specified
         in the table's configuration.
@@ -265,11 +286,21 @@ class TableService:
         If it's set to "append", it appends the new data incrementally.
         For any other `sync_mode` values, a ValueError is raised, indicating
         an uncertain sync mode configuration.
+
+        Args:
+        use_materialized_query (bool):
+            If set to True, the function uses an materialized query
+                strategy for insertion.
+            If set to False (default), the function uses the standard query approach.
+        **kwargs: Additional keyword arguments which may be passed to other functions
+            used in this method.
         """
         if self.table.sync_mode == "overwrite":
             self.insert_full_overwrite(**kwargs)
         elif self.table.sync_mode == "append":
-            self.insert_incremental_append(**kwargs)
+            self.insert_incremental_append(
+                use_materialized_query=use_materialized_query, **kwargs
+            )
         else:
             raise ValueError(
                 "Uncertain sync mode in config \
