@@ -43,11 +43,11 @@ def test_create_external_table_happy_path(
                         ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
-                        OBJECT_PATTERN = ?, ?
+                        OBJECT_PATTERN = ?
                         TYPE = (PARQUET)
                         COMPRESSION = GZIP"""
         ),
-        ["role_arn", request.getfixturevalue(s3_url), "*0.parquet", "*1.parquet"],
+        ["role_arn", request.getfixturevalue(s3_url), "*0.parquet"],
     )
 
 
@@ -91,10 +91,10 @@ def test_create_external_table_json(mock_aws_settings: AWSSettings, mock_table: 
                         ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
-                        OBJECT_PATTERN = ?, ?
+                        OBJECT_PATTERN = ?
                         TYPE = (JSON PARSE_AS_TEXT = 'TRUE')"""
         ),
-        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+        ["role_arn", "s3://bucket-name/", "*0.parquet"],
     )
 
 
@@ -119,10 +119,10 @@ def test_create_external_table_csv(mock_aws_settings: AWSSettings, mock_table: T
                         ("id" INTEGER, "name" TEXT, "name.member0" TEXT)
                         CREDENTIALS = (AWS_ROLE_ARN = ?)
                         URL = ?
-                        OBJECT_PATTERN = ?, ?
+                        OBJECT_PATTERN = ?
                         TYPE = (CSV SKIP_HEADER_ROWS = 0)"""
         ),
-        ["role_arn", "s3://bucket-name/", "*0.parquet", "*1.parquet"],
+        ["role_arn", "s3://bucket-name/", "*0.parquet"],
     )
 
 

@@ -129,12 +129,22 @@ class Table(BaseModel, YamlModelMixin):
     primary_index: conlist(str, min_items=1)  # type: ignore
     partitions: List[Partition] = []
     file_type: str
-    object_pattern: conlist(str, min_items=1)  # type: ignore
+    object_pattern: str
     compression: Optional[str] = None
     csv_skip_header_row: Optional[bool] = None
     json_parse_as_text: Optional[bool] = None
     sync_mode: Optional[str] = None
     s3_url: Optional[str] = Field(regex=r"^s3:\/\/[a-z0-9-]{1,64}\/[a-zA-Z0-9-_.\/]*")
+
+    @root_validator
+    def object_pattern_validator(cls, values: dict) -> dict:
+        """
+        Check whether object_pattern is not empty
+        """
+        if not values.get("object_pattern"):
+            raise ValueError("Missing parameter object_pattern")
+
+        return values
 
     @root_validator
     def compression_validator(cls, values: dict) -> dict:

@@ -46,7 +46,7 @@ def mock_table():
         database_name="db_name",
         table_name="table_name",
         file_type="PARQUET",
-        object_pattern=["*0.parquet", "*1.parquet"],
+        object_pattern="*0.parquet",
         columns=[
             Column(name="id", type="INTEGER"),
             Column(name="name", type="TEXT"),
@@ -69,7 +69,7 @@ def mock_table_partitioned_by_file():
         database_name="db_name",
         table_name="table_name",
         file_type="PARQUET",
-        object_pattern=["*0.parquet", "*1.parquet"],
+        object_pattern="*0.parquet",
         columns=[
             Column(name="id", type="INTEGER"),
             Column(name="last_time.member0", alias="last_time", type="TIMESTAMP"),
@@ -90,7 +90,7 @@ def mock_table_partitioned():
         database_name="db_name",
         table_name="table_name",
         file_type="PARQUET",
-        object_pattern=["*2.parquet", "*1.parquet"],
+        object_pattern="*2.parquet",
         columns=[
             Column(name="id", type="INTEGER"),
             Column(name="user", type="STRING"),
@@ -124,7 +124,7 @@ def table_dict() -> dict:
             {"column_name": "test_col_3", "datetime_part": "DAY"},
         ],
         "file_type": "PARQUET",
-        "object_pattern": ["*0.parquet", "*1.parquet"],
+        "object_pattern": "*0.parquet",
         "compression": "GZIP",
         "sync_mode": "overwrite",
     }
