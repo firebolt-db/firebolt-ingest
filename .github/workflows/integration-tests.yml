@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   workflow_call:
     secrets:
-      FIREBOLT_USERNAME:
+      FIREBOLT_STG_USERNAME:
         required: true
-      FIREBOLT_PASSWORD:
+      FIREBOLT_STG_PASSWORD:
         required: true
 
 jobs:
