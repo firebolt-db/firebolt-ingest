@@ -306,7 +306,8 @@ def test_does_external_table_exist(mocker: MockerFixture, mock_table: Table):
 
     cursor_mock.execute.assert_called_once_with(
         query=format_query(
-            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.external_table_name}'"
+            f"SELECT * FROM information_schema.tables \
+                WHERE table_name = '{ts.external_table_name}'"
         )
     )
 
@@ -328,7 +329,8 @@ def test_does_internal_table_exist(mocker: MockerFixture, mock_table: Table):
     # Use the same format for the query as used in the actual function
     cursor_mock.execute.assert_called_once_with(
         query=format_query(
-            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.internal_table_name}'"
+            f"SELECT * FROM information_schema.tables \
+                WHERE table_name = '{ts.internal_table_name}'"
         )
     )
 
@@ -353,12 +355,14 @@ def test_drop_tables(mocker: MockerFixture, mock_table: Table):
     )
     cursor_mock.execute.assert_any_call(
         query=format_query(
-            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.external_table_name}'"
+            f"SELECT * FROM information_schema.tables \
+                WHERE table_name = '{ts.external_table_name}'"
         )
     )
 
     cursor_mock.execute.assert_any_call(
         query=format_query(
-            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.internal_table_name}'"
+            f"SELECT * FROM information_schema.tables \
+                WHERE table_name = '{ts.internal_table_name}'"
         )
     )
