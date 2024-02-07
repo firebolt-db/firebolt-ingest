@@ -72,7 +72,7 @@ def test_does_table_exist(table_name: str, cursor: MagicMock):
     assert does_table_exist(cursor=cursor, table_name=table_name)
 
     cursor.execute.assert_called_once_with(
-        "SELECT * FROM information_schema.tables WHERE table_name = ?", [table_name]
+        f"SELECT * FROM information_schema.tables WHERE table_name = '{table_name}'"
     )
 
 
