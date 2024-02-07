@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 from typing import List, Sequence, Set, Tuple
 
@@ -6,6 +7,14 @@ from firebolt.db import Cursor
 
 from firebolt_ingest.table_model import FILE_METADATA_COLUMNS, Table
 from firebolt_ingest.utils import format_query
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s :: %(levelname)s :: %(filename)s ::\
+ %(funcName)s :: %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 def table_must_exist(func):
@@ -72,7 +81,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     Raises an exception if the table did not drop.
     """
     drop_query = f"DROP TABLE IF EXISTS {table_name} CASCADE"
-
+    logger.info(drop_query)
     # drop the table
     cursor.execute(query=format_query(drop_query))
 
@@ -121,6 +130,7 @@ def verify_ingestion_rowcount(
         (SELECT count(*) FROM {internal_table_name}) AS rc_fact,
         (SELECT count(*) FROM {external_table_name}) AS rc_external
     """
+    logger.info(query)
     cursor.execute(query=format_query(query))
 
     data = cursor.fetchall()
@@ -150,6 +160,7 @@ def verify_ingestion_file_names(cursor: Cursor, internal_table_name: str) -> boo
     GROUP BY source_file_name
     HAVING count(DISTINCT source_file_timestamp) <> 1
     """
+    logger.info(query)
     cursor.execute(query=format_query(query))
 
     # if the table is correct, the number of fetched rows should be zero
@@ -161,9 +172,12 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     Check whether table with table_name exists,
     and return True if it exists, False otherwise.
     """
-    find_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
+    find_query = (
+        f"SELECT * FROM information_schema.tables WHERE table_name = {table_name}"
+    )
+    logger.info(find_query)
 
-    return cursor.execute(find_query, [table_name]) != 0
+    return cursor.execute(query=format_query(find_query)) != 0
 
 
 def check_table_compatibility(
