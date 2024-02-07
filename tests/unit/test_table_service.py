@@ -303,10 +303,11 @@ def test_does_external_table_exist(mocker: MockerFixture, mock_table: Table):
     ts.does_external_table_exist()
 
     # Use the same format for the query as used in the actual function
-    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
 
     cursor_mock.execute.assert_called_once_with(
-        expected_query, [ts.external_table_name]
+        query=format_query(
+            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.external_table_name}'"
+        )
     )
 
 
@@ -325,10 +326,10 @@ def test_does_internal_table_exist(mocker: MockerFixture, mock_table: Table):
     ts.does_internal_table_exist()
 
     # Use the same format for the query as used in the actual function
-    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
-
     cursor_mock.execute.assert_called_once_with(
-        expected_query, [ts.internal_table_name]
+        query=format_query(
+            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.internal_table_name}'"
+        )
     )
 
 
@@ -350,6 +351,14 @@ def test_drop_tables(mocker: MockerFixture, mock_table: Table):
     cursor_mock.execute.assert_any_call(
         query="DROP TABLE IF EXISTS ex_table_name CASCADE"
     )
-    expected_query = "SELECT * FROM information_schema.tables WHERE table_name = ?"
-    cursor_mock.execute.assert_any_call(expected_query, [ts.external_table_name])
-    cursor_mock.execute.assert_any_call(expected_query, [ts.internal_table_name])
+    cursor_mock.execute.assert_any_call(
+        query=format_query(
+            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.external_table_name}'"
+        )
+    )
+
+    cursor_mock.execute.assert_any_call(
+        query=format_query(
+            f"SELECT * FROM information_schema.tables WHERE table_name = '{ts.internal_table_name}'"
+        )
+    )
