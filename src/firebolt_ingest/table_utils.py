@@ -173,7 +173,7 @@ def does_table_exist(cursor: Cursor, table_name: str) -> bool:
     and return True if it exists, False otherwise.
     """
     find_query = (
-        f"SELECT * FROM information_schema.tables WHERE table_name = {table_name}"
+        f"SELECT * FROM information_schema.tables WHERE table_name = '{table_name}'"
     )
     logger.info(find_query)
 
