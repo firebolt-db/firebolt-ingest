@@ -22,7 +22,7 @@ from firebolt_ingest.utils import format_query
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s :: %(levelname)s :: %(filename)s ::\
- %(funcName)s :: %(message)s",
+ %(funcName)s :: %(thread)d :: %(threadName)s :: %(message)s",
 )
 
 logger = logging.getLogger(__name__)
