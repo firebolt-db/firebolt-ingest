@@ -144,6 +144,7 @@ class TableService:
              and skipping repeated nodes and their child node
         """
         with self.cursor_lock:
+            logger.info("lock cursor")
             cursor = self.connection.cursor()
 
             # TODO: uncomment it back after the fix applied,
@@ -212,6 +213,7 @@ class TableService:
 
         """
         with self.cursor_lock:
+            logger.info("lock cursor")
             cursor = self.connection.cursor()
             # TODO: uncomment it back after the fix applied,
             # commented because of https://packboard.atlassian.net/browse/FIR-26886
