@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection
@@ -51,6 +52,7 @@ class TableService:
                 create the name of the internal table. Defaults to an empty string.
         """
         self.connection = connection
+        self.cursor_lock = threading.Lock()  # Initialize the lock
         self.table = table
         self.internal_table_name = f"{internal_prefix}{self.table.table_name}"
         self.external_table_name = f"{external_prefix}{self.table.table_name}"
@@ -141,54 +143,55 @@ class TableService:
             use_short_column_path_parquet: (Optional) Use short parquet column path
              and skipping repeated nodes and their child node
         """
-        cursor = self.connection.cursor()
+        with self.cursor_lock:
+            cursor = self.connection.cursor()
 
-        # TODO: uncomment it back after the fix applied,
-        # commented because of https://packboard.atlassian.net/browse/FIR-26886
-        # raise_on_tables_non_compatibility(cursor,
-        #                                   self.table,
-        #                                   ignore_meta_columns=True)
+            # TODO: uncomment it back after the fix applied,
+            # commented because of https://packboard.atlassian.net/browse/FIR-26886
+            # raise_on_tables_non_compatibility(cursor,
+            #                                   self.table,
+            #                                   ignore_meta_columns=True)
 
-        # get table schema
-        internal_table_schema = get_table_schema(cursor, self.internal_table_name)
-        internal_table_columns = get_table_columns(cursor, self.internal_table_name)
+            # get table schema
+            internal_table_schema = get_table_schema(cursor, self.internal_table_name)
+            internal_table_columns = get_table_columns(cursor, self.internal_table_name)
 
-        # drop the table
-        logger.info(f"Drop internal table: {self.internal_table_name}")
-        drop_table(cursor, self.internal_table_name)
+            # drop the table
+            logger.info(f"Drop internal table: {self.internal_table_name}")
+            drop_table(cursor, self.internal_table_name)
 
-        # recreate the table
-        logger.info(f"Create internal table:\n{internal_table_schema}")
-        cursor.execute(query=internal_table_schema)
+            # recreate the table
+            logger.info(f"Create internal table:\n{internal_table_schema}")
+            cursor.execute(query=internal_table_schema)
 
-        # insert the data from external to internal
-        column_names = [
-            (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
-            for c in self.table.columns
-        ]
+            # insert the data from external to internal
+            column_names = [
+                (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
+                for c in self.table.columns
+            ]
 
-        for c in FILE_METADATA_COLUMNS:
-            name, type_ = c.name, c.type
-            # Check if FILE_METADATA_COLUMNS is present in internal_table_columns
-            # TIMESTAMPNTZ is sometimes represented as TIMESTAMP, need to check both
-            if (name, type_) in internal_table_columns or (
-                type_ == "TIMESTAMPNTZ"
-                and (name, "TIMESTAMP") in internal_table_columns
-            ):
-                column_names.append(name)
+            for c in FILE_METADATA_COLUMNS:
+                name, type_ = c.name, c.type
+                # Check if FILE_METADATA_COLUMNS is present in internal_table_columns
+                # TIMESTAMPNTZ is sometimes represented as TIMESTAMP, need to check both
+                if (name, type_) in internal_table_columns or (
+                    type_ == "TIMESTAMPNTZ"
+                    and (name, "TIMESTAMP") in internal_table_columns
+                ):
+                    column_names.append(name)
 
-        insert_query = (
-            f"INSERT INTO {self.internal_table_name}\n"
-            f"SELECT {', '.join(column_names)}\n"
-            f"FROM {self.external_table_name}\n"
-        )
+            insert_query = (
+                f"INSERT INTO {self.internal_table_name}\n"
+                f"SELECT {', '.join(column_names)}\n"
+                f"FROM {self.external_table_name}\n"
+            )
 
-        logger.info(f"Insert with query:\n{insert_query}")
-        execute_set_statements(
-            cursor,
-            **kwargs,
-        )
-        cursor.execute(query=format_query(insert_query))
+            logger.info(f"Insert with query:\n{insert_query}")
+            execute_set_statements(
+                cursor,
+                **kwargs,
+            )
+            cursor.execute(query=format_query(insert_query))
 
     def insert_incremental_append(self, use_materialized_query=False, **kwargs) -> None:
         """
@@ -208,60 +211,61 @@ class TableService:
         Returns:
 
         """
-        cursor = self.connection.cursor()
-        # TODO: uncomment it back after the fix applied,
-        # commented because of https://packboard.atlassian.net/browse/FIR-26886
-        # raise_on_tables_non_compatibility(cursor,
-        #                                   self.table,
-        #                                   ignore_meta_columns=False)
+        with self.cursor_lock:
+            cursor = self.connection.cursor()
+            # TODO: uncomment it back after the fix applied,
+            # commented because of https://packboard.atlassian.net/browse/FIR-26886
+            # raise_on_tables_non_compatibility(cursor,
+            #                                   self.table,
+            #                                   ignore_meta_columns=False)
 
-        if not does_table_exist(cursor, self.internal_table_name):
-            raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
-        if not does_table_exist(cursor, self.external_table_name):
-            raise FireboltError(
-                f"External table {self.external_table_name} doesn't exist"
-            )
-
-        column_names = [
-            (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
-            for c in self.table.columns
-        ]
-
-        if use_materialized_query:
-            # Optimized query
-            insert_query = f"""
-                INSERT INTO {self.internal_table_name}
-                WITH a AS materialized (
-                    SELECT DISTINCT source_file_name
-                    FROM {self.internal_table_name}
+            if not does_table_exist(cursor, self.internal_table_name):
+                raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
+            if not does_table_exist(cursor, self.external_table_name):
+                raise FireboltError(
+                    f"External table {self.external_table_name} doesn't exist"
                 )
-                SELECT {', '.join(column_names)},
-                    source_file_name, source_file_timestamp
-                FROM {self.external_table_name}
-                WHERE source_file_name NOT IN (
-                    SELECT source_file_name
-                    FROM a
-                )
-            """
-        else:
-            insert_query = f"""
-                INSERT INTO {self.internal_table_name}
-                SELECT {', '.join(column_names)},
+
+            column_names = [
+                (f'"{c.name}"' + (f" AS {c.alias}" if c.alias else ""))
+                for c in self.table.columns
+            ]
+
+            if use_materialized_query:
+                # Optimized query
+                insert_query = f"""
+                    INSERT INTO {self.internal_table_name}
+                    WITH a AS materialized (
+                        SELECT DISTINCT source_file_name
+                        FROM {self.internal_table_name}
+                    )
+                    SELECT {', '.join(column_names)},
                         source_file_name, source_file_timestamp
-                FROM {self.external_table_name}
-                WHERE (source_file_name, source_file_timestamp::timestampntz)
-                NOT IN (
-                    SELECT DISTINCT source_file_name,
-                                    source_file_timestamp
-                    FROM {self.internal_table_name})
+                    FROM {self.external_table_name}
+                    WHERE source_file_name NOT IN (
+                        SELECT source_file_name
+                        FROM a
+                    )
                 """
+            else:
+                insert_query = f"""
+                    INSERT INTO {self.internal_table_name}
+                    SELECT {', '.join(column_names)},
+                            source_file_name, source_file_timestamp
+                    FROM {self.external_table_name}
+                    WHERE (source_file_name, source_file_timestamp::timestampntz)
+                    NOT IN (
+                        SELECT DISTINCT source_file_name,
+                                        source_file_timestamp
+                        FROM {self.internal_table_name})
+                    """
 
-        logger.info(f"Insert with query:\n{insert_query}")
-        execute_set_statements(
-            cursor,
-            **kwargs,
-        )
-        cursor.execute(query=format_query(insert_query))
+            logger.info(f"Insert with query:\n{insert_query}")
+            execute_set_statements(
+                cursor,
+                **kwargs,
+            )
+            cursor.execute(query=format_query(insert_query))
 
     def verify_ingestion(self) -> bool:
         """
