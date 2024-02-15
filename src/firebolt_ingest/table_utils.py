@@ -75,6 +75,7 @@ def drop_table(cursor: Cursor, table_name: str) -> None:
     Raises an exception if the table did not drop.
     """
     drop_query = f"DROP TABLE IF EXISTS {table_name} CASCADE"
+    logger.info(drop_query)
 
     # drop the table
     cursor.execute(query=format_query(drop_query))
@@ -93,7 +94,9 @@ def get_table_columns(cursor: Cursor, table_name: str) -> List[Tuple]:
         cursor: Firebolt database cursor
         table_name: Name of the table
     """
-
+    logger.info(f"SELECT column_name, data_type "
+        "FROM information_schema.columns "
+        "WHERE table_name = {table_name}")
     cursor.execute(
         "SELECT column_name, data_type "
         "FROM information_schema.columns "
