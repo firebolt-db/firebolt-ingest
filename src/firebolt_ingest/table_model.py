@@ -119,7 +119,7 @@ class Partition(BaseModel):
 
     def as_sql_string(self) -> str:
         if self.datetime_part is not None:
-            return f"EXTRACT({self.datetime_part} FROM {self.column_name})"
+            return f"EXTRACT({self.datetime_part.value} FROM {self.column_name})"
         return self.column_name
 
 
