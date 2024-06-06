@@ -306,66 +306,6 @@ class TableService:
                 "Uncertain sync mode in config \
                 use insert_full_overwrite/insert_incremental_append instead"
             )
-        
-    def insert_and_refresh_outdated_partitions(self, use_materialized_query=False, **kwargs) -> None:
-        """
-        Gets outdated partition comparing MAX(source_file_timestamp) in fact table with 
-        MAX(source_file_timestamp) in external table and drops them.
-        Inserts data into a table based on the synchronization mode specified
-        in the table's configuration.
-
-        This method checks the `sync_mode` attribute of the associated table
-        and performs an insert operation accordingly.
-        If the `sync_mode` is set to "overwrite", it performs
-        a full overwrite of the data in the table.
-        If it's set to "append", it appends the new data incrementally.
-        For any other `sync_mode` values, a ValueError is raised, indicating
-        an uncertain sync mode configuration.
-
-        Args:
-        use_materialized_query (bool):
-            If set to True, the function uses an materialized query
-                strategy for insertion.
-            If set to False (default), the function uses the standard query approach.
-        **kwargs: Additional keyword arguments which may be passed to other functions
-            used in this method.
-        """
-        self.drop_outdated_partitions()
-        self.insert(use_materialized_query, **kwargs)
-
-    def drop_outdated_partitions(self):
-        """
-        Drops outdated partitions from the internal table if they exist.
-        """
-        cursor = self.connection.cursor()
-        if not does_table_exist(cursor, self.internal_table_name):
-            raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
-        if not does_table_exist(cursor, self.external_table_name):
-            raise FireboltError(
-                f"External table {self.external_table_name} doesn't exist"
-            )
-        if not self.internal_table_name.partition:
-            raise FireboltError(
-                f"Fact table {self.external_table_name} is not partitioned"
-            )
-        
-        outdated_partitions_query = f"SELECT DISTINCT {",".join([p.as_sql_string() for p in self.internal_table_name.partition])} \
-        FROM {self.external_table_name} \
-        WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) FROM {self.internal_table_name} )"
-
-        cursor.execute(query=format_query(outdated_partitions_query))
-        outdated_partitions = cursor.fetchall()
-        logger.info(f"List of outdated partitions: {outdated_partitions}")
-        
-        if outdated_partitions:
-            q = "ALTER TABLE {table_name} DROP PARTITION {partition_expression}"
-            for outdated_partition in outdated_partitions:
-                logger.info(f"Going to drop the following partitions: {outdated_partition}")
-                drop_partition_ddl = q.format(
-                    table_name=self.internal_table_name, partition_expression=",".join(map(str, outdated_partition))
-                )
-                cursor.execute(query=drop_partition_ddl)
-    
 
     def drop_internal_table(self) -> None:
         """
@@ -401,3 +341,37 @@ class TableService:
         Checks if the internal table exists in the database.
         """
         return does_table_exist(self.connection.cursor(), self.internal_table_name)
+
+    def drop_outdated_partitions(self):
+        """
+        Drops partitions in the fact table that are outdated, meaning the corresponding 
+            file in the external table has a more recent timestamp (was updated).
+        """
+        cursor = self.connection.cursor()
+        if not does_table_exist(cursor, self.internal_table_name):
+            raise FireboltError(f"Fact table {self.internal_table_name} doesn't exist")
+        if not does_table_exist(cursor, self.external_table_name):
+            raise FireboltError(
+                f"External table {self.external_table_name} doesn't exist"
+            )
+        if not self.table.partitions:
+            raise FireboltError(
+                f"Fact table {self.external_table_name} is not partitioned"
+            )
+        
+        outdated_partitions_query = f"SELECT DISTINCT {','.join([p.as_sql_string() for p in self.table.partitions])} \
+        FROM {self.external_table_name} \
+        WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) FROM {self.internal_table_name} )"
+
+        cursor.execute(query=format_query(outdated_partitions_query))
+        outdated_partitions = cursor.fetchall()
+        logger.info(f"List of outdated partitions: {outdated_partitions}")
+        
+        if outdated_partitions:
+            q = "ALTER TABLE {table_name} DROP PARTITION {partition_expression}"
+            for outdated_partition in outdated_partitions:
+                logger.info(f"Going to drop the following partitions: {outdated_partition}")
+                drop_partition_query = q.format(
+                    table_name=self.internal_table_name, partition_expression=",".join(map(str, outdated_partition))
+                )
+                cursor.execute(query=drop_partition_query)
