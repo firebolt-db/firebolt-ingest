@@ -344,7 +344,7 @@ class TableService:
 
     def drop_outdated_partitions(self):
         """
-        Drops partitions in the fact table that are outdated, meaning the corresponding 
+        Drops partitions in the fact table that are outdated, meaning the corresponding
             file in the external table has a more recent timestamp (was updated).
         """
         cursor = self.connection.cursor()
@@ -358,20 +358,24 @@ class TableService:
             raise FireboltError(
                 f"Fact table {self.external_table_name} is not partitioned"
             )
-        
+
         outdated_partitions_query = f"SELECT DISTINCT {','.join([p.as_sql_string() for p in self.table.partitions])} \
         FROM {self.external_table_name} \
-        WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) FROM {self.internal_table_name} )"
+        WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) \
+            FROM {self.internal_table_name} )"
 
         cursor.execute(query=format_query(outdated_partitions_query))
         outdated_partitions = cursor.fetchall()
         logger.info(f"List of outdated partitions: {outdated_partitions}")
-        
+
         if outdated_partitions:
             q = "ALTER TABLE {table_name} DROP PARTITION {partition_expression}"
             for outdated_partition in outdated_partitions:
-                logger.info(f"Going to drop the following partitions: {outdated_partition}")
+                logger.info(
+                    f"Going to drop the following partitions: {outdated_partition}"
+                )
                 drop_partition_query = q.format(
-                    table_name=self.internal_table_name, partition_expression=",".join(map(str, outdated_partition))
+                    table_name=self.internal_table_name,
+                    partition_expression=",".join(map(str, outdated_partition)),
                 )
                 cursor.execute(query=drop_partition_query)

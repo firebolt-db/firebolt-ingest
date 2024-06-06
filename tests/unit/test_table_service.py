@@ -354,7 +354,10 @@ def test_drop_tables(mocker: MockerFixture, mock_table: Table):
     cursor_mock.execute.assert_any_call(expected_query, [ts.external_table_name])
     cursor_mock.execute.assert_any_call(expected_query, [ts.internal_table_name])
 
-def test_drop_outdated_partitions_table_without_partitions(mocker: MockerFixture, mock_table: Table):
+
+def test_drop_outdated_partitions_table_without_partitions(
+    mocker: MockerFixture, mock_table: Table
+):
     """
     Test to check if the function 'drop_outdated_partitions' correctly
     drops the partitions in the fact table that are outdated.
@@ -370,6 +373,7 @@ def test_drop_outdated_partitions_table_without_partitions(mocker: MockerFixture
     with pytest.raises(FireboltError):
         ts.drop_outdated_partitions()
 
+
 def test_drop_outdated_partitions(mocker: MockerFixture, mock_table_partitioned: Table):
     """
     Test to check if the function 'drop_outdated_partitions' correctly
@@ -378,7 +382,6 @@ def test_drop_outdated_partitions(mocker: MockerFixture, mock_table_partitioned:
 
     connection = MagicMock()
     cursor_mock = MagicMock()
-    #cursor_mock.execute.return_value = 0
     connection.cursor.return_value = cursor_mock
 
     does_table_exists_mock = mocker.patch(
@@ -395,14 +398,19 @@ def test_drop_outdated_partitions(mocker: MockerFixture, mock_table_partitioned:
         query=format_query(
             """SELECT DISTINCT user,
                 EXTRACT(DAY FROM birthdate)
-            FROM ex_table_name 
-            WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) FROM table_name)
+            FROM ex_table_name
+            WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp)
+                FROM table_name)
             """
         )
     )
 
-    cursor_mock.execute.assert_any_call(query="ALTER TABLE table_name DROP PARTITION user1,12")
-    cursor_mock.execute.assert_any_call(query="ALTER TABLE table_name DROP PARTITION user2,13")
+    cursor_mock.execute.assert_any_call(
+        query="ALTER TABLE table_name DROP PARTITION user1,12"
+    )
+    cursor_mock.execute.assert_any_call(
+        query="ALTER TABLE table_name DROP PARTITION user2,13"
+    )
 
     does_table_exists_mock.assert_any_call(cursor_mock, "table_name")
     does_table_exists_mock.assert_any_call(cursor_mock, "ex_table_name")
