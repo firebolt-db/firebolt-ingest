@@ -370,7 +370,11 @@ def test_drop_outdated_partitions_table_without_partitions(
 
     ts = TableService(mock_table, connection)
 
-    with pytest.raises(FireboltError):
+    does_table_exists_mock = mocker.patch(
+        "firebolt_ingest.table_service.does_table_exist", return_value=[True, True]
+    )
+
+    with pytest.raises(FireboltError, match="Fact table table_name is not partitioned"):
         ts.drop_outdated_partitions()
 
 
@@ -414,3 +418,29 @@ def test_drop_outdated_partitions(mocker: MockerFixture, mock_table_partitioned:
 
     does_table_exists_mock.assert_any_call(cursor_mock, "table_name")
     does_table_exists_mock.assert_any_call(cursor_mock, "ex_table_name")
+
+
+def test_drop_outdated_partitions_no_found(mocker: MockerFixture, mock_table_partitioned: Table):
+    """
+    Test to check if the function 'drop_outdated_partitions' correctly
+    drops the partitions in the fact table that are outdated.
+    """
+
+    connection = MagicMock()
+    cursor_mock = MagicMock()
+    connection.cursor.return_value = cursor_mock
+
+    does_table_exists_mock = mocker.patch(
+        "firebolt_ingest.table_service.does_table_exist", return_value=[True, True]
+    )
+
+    ts = TableService(mock_table_partitioned, connection)
+
+    cursor_mock.fetchall.return_value = []
+
+    ts.drop_outdated_partitions()
+
+    # Ensure no ALTER TABLE DROP PARTITION queries were called
+    for call_args in cursor_mock.execute.call_args_list:
+        executed_query = call_args[1].get('query')
+        assert not executed_query.startswith("ALTER TABLE table_name DROP PARTITION")

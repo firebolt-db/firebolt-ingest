@@ -356,7 +356,7 @@ class TableService:
             )
         if not self.table.partitions:
             raise FireboltError(
-                f"Fact table {self.external_table_name} is not partitioned"
+                f"Fact table {self.internal_table_name} is not partitioned"
             )
 
         outdated_partitions_query = f"SELECT DISTINCT {','.join([p.as_sql_string() for p in self.table.partitions])} \
@@ -371,7 +371,7 @@ class TableService:
         if outdated_partitions:
             q = "ALTER TABLE {table_name} DROP PARTITION {partition_expression}"
             for outdated_partition in outdated_partitions:
-                logger.info(
+                logger.debug(
                     f"Going to drop the following partitions: {outdated_partition}"
                 )
                 drop_partition_query = q.format(
