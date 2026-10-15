@@ -1,0 +1,40 @@
+---
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "08:17"
+      timezone: "Etc/UTC"
+    commit-message:
+      prefix: "chore(deps):"
+    open-pull-requests-limit: 20
+    cooldown:
+      default-days: 7
+    ignore:
+      # The major version selects the product (v1 = FB 1.0, v2 = FB 2.0), so it is not an upgrade.
+      - dependency-name: "firebolt-db/integration-testing-setup"
+        update-types: ["version-update:semver-major"]
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:30"
+      timezone: "Etc/UTC"
+    commit-message:
+      prefix: "chore(deps):"
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+    groups:
+      python:
+        patterns:
+          - "*"
