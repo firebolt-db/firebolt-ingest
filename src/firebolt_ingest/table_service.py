@@ -359,7 +359,8 @@ class TableService:
                 f"Fact table {self.internal_table_name} is not partitioned"
             )
 
-        outdated_partitions_query = f"SELECT DISTINCT {','.join([p.as_sql_string() for p in self.table.partitions])} \
+        partition_columns = ",".join(p.as_sql_string() for p in self.table.partitions)
+        outdated_partitions_query = f"SELECT DISTINCT {partition_columns} \
         FROM {self.external_table_name} \
         WHERE source_file_timestamp > ( SELECT MAX(source_file_timestamp) \
             FROM {self.internal_table_name} )"
