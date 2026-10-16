@@ -18,10 +18,10 @@ jobs:
         if: ${{ always() }}
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
     
       - name: Set up Python 
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
     
@@ -47,7 +47,7 @@ jobs:
 
       - name: Restore cached failed tests
         id: cache-tests-restore
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v6
         with:
           path: |
             .pytest_cache/v/cache/lastfailed
@@ -69,7 +69,7 @@ jobs:
         
       - name: Save failed tests
         id: cache-tests-save
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v6
         if: failure()
         with:
           path: |
