@@ -9,15 +9,22 @@ on:
       SONARCLOUD_TOKEN:
         required: true
 
+permissions: {}
+
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # Sonar reads PR information.
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: "Download coverage report"
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pytest-coverage-report
       
@@ -25,7 +32,7 @@ jobs:
         run: sed -i "s/<source>\/home\/runner\/work\/firebolt-ingest\/firebolt-ingest\/src<\/source>/<source>\/github\/workspace\/src<\/source>/g" /home/runner/work/firebolt-ingest/firebolt-ingest/coverage.xml || echo "Coverage file doesn't exist, still we continue"
 
       - name: "Security Scan"
-        uses: firebolt-db/action-security-scan@main
+        uses: firebolt-db/action-security-scan@83d65487985b5e0e967362900c665ced1e8d0dbf # main
         with:
           github-key: ${{ secrets.GITHUB_TOKEN }}
           fossa-key: ${{ secrets.FOSSA_TOKEN }}

@@ -3,9 +3,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 6 * * *' # 5 am UTC every day
+
+permissions: {}
+
 jobs:
   tests:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false # finish all jobs even if one fails
       max-parallel: 2
@@ -14,14 +19,16 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
       - name: Collect Workflow Telemetry
-        uses: runforesight/foresight-workflow-kit-action@v1
+        uses: runforesight/foresight-workflow-kit-action@105a1f2f6eef7e4403adf5592020391ebfc72583 # v1.3.3
         if: ${{ always() }}
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
     
       - name: Set up Python 
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
     
@@ -36,7 +43,7 @@ jobs:
 
       - name: Setup database and engine
         id: setup
-        uses: firebolt-db/integration-testing-setup@v1
+        uses: firebolt-db/integration-testing-setup@eb35b7719247c93392cb3a8aa4f554a4c11a770b # v1.0.3
         with:
           firebolt-username: ${{ secrets.FIREBOLT_STG_USERNAME }}
           firebolt-password: ${{ secrets.FIREBOLT_STG_PASSWORD }}
@@ -47,7 +54,7 @@ jobs:
 
       - name: Restore cached failed tests
         id: cache-tests-restore
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .pytest_cache/v/cache/lastfailed
@@ -69,7 +76,7 @@ jobs:
         
       - name: Save failed tests
         id: cache-tests-save
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: failure()
         with:
           path: |
@@ -77,7 +84,7 @@ jobs:
           key: ${{ steps.cache-tests-restore.outputs.cache-primary-key }}
 
       - name: Foresight Test / Coverage Results
-        uses: runforesight/foresight-test-kit-action@v1
+        uses: runforesight/foresight-test-kit-action@16fcb107ba3a54b63d784ebcc4829b80e0ab79c3 # v1.3.5
         if: success() || failure()
         with:
           test_format: JUNIT
@@ -92,7 +99,7 @@ jobs:
       - name: Slack Notify of failure
         if: failure()
         id: slack
-        uses: firebolt-db/action-slack-nightly-notify@v1
+        uses: firebolt-db/action-slack-nightly-notify@1bdd915837fbe0986aeacd2ee63a648ae2dcc6db # v1.0.0
         with:
           os: ${{ matrix.os }}
           programming-language: Python
