@@ -7,12 +7,18 @@ on:
       FOSSA_TOKEN:
         required: true
 
+permissions: {}
+
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: "Build"
         run: |
@@ -21,6 +27,6 @@ jobs:
         shell: bash
 
       - name: "Run FOSSA Scan"
-        uses: fossas/fossa-action@v1
+        uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
         with:
           api-key: ${{ secrets.FOSSA_TOKEN }}
