@@ -5,6 +5,10 @@ name: Unit tests
 
 on:
   workflow_call:
+    secrets:
+      GIST_PAT:
+        description: 'Token for the coverage badge gist. Only used on the default branch.'
+        required: false
   push:
     branches: [ main ]
 
@@ -55,6 +59,8 @@ jobs:
         echo "covered=$percentage_whole" >>  "$GITHUB_OUTPUT"
     
     - name: Create Coverage Badge
+      # Only the default branch updates the badge.
+      if: github.ref_name == github.event.repository.default_branch
       uses: schneegans/dynamic-badges-action@28b0fa8bdeb46170ac397105ece0c1fe58f68910 # v1.9.0
       continue-on-error: true
       with:
