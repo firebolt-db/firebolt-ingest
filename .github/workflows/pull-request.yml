@@ -8,16 +8,6 @@ on:
 permissions: {}
 
 jobs:
-  check-title:
-    runs-on: ubuntu-latest
-    permissions:
-      # The PR title check reads the PR and posts/deletes a hint comment.
-      pull-requests: write
-    steps:
-      - name: Check title name convention
-        uses: jef/conventional-commits-pr-action@2ee589f151916f92da5e2887c38d5fe6402e803c # v1.3.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
   code-checkers:
     uses: ./.github/workflows/code-check.yml
     permissions:
